@@ -57,6 +57,10 @@ export function onRunMusicStart(listener: () => void) {
   };
 }
 
+/** Full music volume, and the level it drops to while a voice cue is speaking. */
+const MUSIC_VOLUME = 1;
+const DUCKED_VOLUME = 0.3;
+
 let player: AudioPlayer | null = null;
 let playing: Track | null = null;
 
@@ -85,6 +89,17 @@ export function playTrack(track: Track) {
 
 export function pauseMusic() {
   player?.pause();
+}
+
+/**
+ * Lowers the music while something else is talking over it. The synthesizers
+ * behind the text-to-speech cues don't duck the app's own player, so without
+ * this a cue is spoken at full volume over the track.
+ */
+export function duckMusic(ducked: boolean) {
+  if (player) {
+    player.volume = ducked ? DUCKED_VOLUME : MUSIC_VOLUME;
+  }
 }
 
 export function stopMusic() {

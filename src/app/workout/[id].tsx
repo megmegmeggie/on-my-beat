@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useProfile } from '@/hooks/use-profile';
 import { PLAN_IDS } from '@/hooks/use-selected-plan';
 import { useCadence } from '@/lib/cadence';
 import { useSegmentMusic } from '@/lib/music';
@@ -21,6 +22,7 @@ import {
 } from '@/lib/run-session';
 import { addRunRecord, completePlanWorkout, getCustomWorkout } from '@/lib/storage';
 import type { Workout } from '@/lib/types';
+import { useVoiceCues } from '@/lib/voice-cues';
 import { getBuiltInWorkout, PLANS } from '@/lib/workouts';
 import { formatDuration } from '@/utils/formatting';
 
@@ -129,6 +131,7 @@ function RunView({
 }) {
   useKeepAwake();
   const cadence = useCadence();
+  const [profile] = useProfile();
   const [simulating, setSimulating] = useState(false);
   const [simulatedCadence, setSimulatedCadence] = useState(workout.segments[0].targetCadence);
   const currentCadence = simulating ? simulatedCadence : cadence.stepsPerMinute;
@@ -139,6 +142,10 @@ function RunView({
   const feedback = cadenceFeedback(currentCadence, segment.targetCadence);
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
   const feedbackTextColor = feedback === 'on-target' ? colors.bannerText : colors.cardText;
+
+  // Spoken cues follow the same feedback as the banner, but only while the run
+  // is actually going, so a paused screen doesn't call out the pace.
+  useVoiceCues(feedback, (profile?.voiceCues ?? true) && state.status === 'running', profile?.voice ?? 'current');
 
   const startedAt = useRef<Date | null>(null);
   const finished = state.status === 'finished';

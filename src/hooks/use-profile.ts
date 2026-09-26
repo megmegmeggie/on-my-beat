@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 
+import { type Voice, VOICE_IDS } from '@/lib/voice-cues';
+
 export const GENDERS = ['male', 'female', 'other'] as const;
 export type Gender = (typeof GENDERS)[number];
 export type HeightUnit = 'imperial' | 'metric';
@@ -15,6 +17,10 @@ export type Profile = {
   heightUnit: HeightUnit;
   /** Typical running pace; null means the user skipped it and `DEFAULT_PACE` is assumed. */
   pace: Pace | null;
+  /** Speak cadence cues ("faster", "slower", "on pace") while a run is going. */
+  voiceCues: boolean;
+  /** Which voice speaks those cues. */
+  voice: Voice;
 };
 
 const STORAGE_KEY = 'profile';
@@ -25,6 +31,8 @@ export const EMPTY_PROFILE: Profile = {
   heightCm: null,
   heightUnit: 'imperial',
   pace: null,
+  voiceCues: true,
+  voice: 'current',
 };
 
 function parseProfile(stored: string | null): Profile {
@@ -39,6 +47,9 @@ function parseProfile(stored: string | null): Profile {
       heightCm: typeof data.heightCm === 'number' ? data.heightCm : null,
       heightUnit: data.heightUnit === 'metric' ? 'metric' : 'imperial',
       pace: PACES.includes(data.pace) ? data.pace : null,
+      // Absent on profiles saved before cues existed, so default them on.
+      voiceCues: typeof data.voiceCues === 'boolean' ? data.voiceCues : true,
+      voice: VOICE_IDS.includes(data.voice) ? data.voice : 'current',
     };
   } catch {
     return EMPTY_PROFILE;

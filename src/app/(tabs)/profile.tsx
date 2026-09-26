@@ -1,5 +1,5 @@
 import { type ComponentProps, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -20,6 +20,7 @@ import {
   type Profile,
   useProfile,
 } from '@/hooks/use-profile';
+import { previewVoice, VOICE_OPTIONS } from '@/lib/voice-cues';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
 
@@ -249,6 +250,44 @@ function ProfileForm({
           <ThemedText style={{ color: colors.bannerText }}>Add your height to see your estimated running stride.</ThemedText>
         )}
       </View>
+
+      <View style={styles.field}>
+        <View style={styles.toggleRow}>
+          <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
+            Voice cues
+          </ThemedText>
+          <Switch
+            value={profile.voiceCues}
+            onValueChange={(voiceCues) => updateProfile({ voiceCues })}
+            trackColor={{ true: colors.gold, false: colors.radio }}
+            thumbColor={colors.bannerText}
+            accessibilityLabel="Voice cues"
+            accessibilityHint="Speaks faster, slower, or on pace as your cadence changes during a run"
+          />
+        </View>
+        <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+          A voice tells you to pick the pace up, ease off, or that you are on target as your cadence drifts during a
+          run. The music dips underneath each cue.
+        </ThemedText>
+        {profile.voiceCues && (
+          <View style={styles.chipRow} accessibilityRole="radiogroup">
+            {VOICE_OPTIONS.map((option) => (
+              <Chip
+                key={option.value}
+                label={option.label}
+                selected={profile.voice === option.value}
+                onPress={() => {
+                  updateProfile({ voice: option.value });
+                  // Say it, so the voice can be chosen by ear.
+                  previewVoice(option.value);
+                }}
+                colors={colors}
+                small
+              />
+            ))}
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -390,6 +429,12 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.four,
     marginTop: Spacing.two,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
   },
   pressed: {
     opacity: 0.7,
