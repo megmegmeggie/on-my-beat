@@ -8,12 +8,15 @@ import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constan
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   cmToFeetAndInches,
+  DEFAULT_PACE,
   estimateStrideLengthCm,
   feetAndInchesToCm,
   formatLength,
+  formatPace,
   type Gender,
   type HeightUnit,
   isValidHeightCm,
+  type Pace,
   type Profile,
   useProfile,
 } from '@/hooks/use-profile';
@@ -24,6 +27,12 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
+];
+
+const PACE_OPTIONS: { value: Pace; label: string }[] = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'moderate', label: 'Moderate' },
+  { value: 'fast', label: 'Fast' },
 ];
 
 const UNIT_OPTIONS: { value: HeightUnit; label: string }[] = [
@@ -99,7 +108,7 @@ function ProfileForm({
         Profile
       </ThemedText>
       <ThemedText style={{ color: colors.cardSubtext }}>
-        Tell us a little about yourself so we can estimate your stride.
+        Tell us a little about yourself so we can estimate your running stride.
       </ThemedText>
 
       <View style={styles.field}>
@@ -201,21 +210,43 @@ function ProfileForm({
         )}
       </View>
 
+      <View style={styles.field}>
+        <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
+          Typical running pace (optional)
+        </ThemedText>
+        <View style={styles.chipRow} accessibilityRole="radiogroup">
+          {PACE_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              selected={profile.pace === option.value}
+              onPress={() => updateProfile({ pace: profile.pace === option.value ? null : option.value })}
+              colors={colors}
+            />
+          ))}
+        </View>
+        <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+          {profile.pace
+            ? `About ${formatPace(profile.pace, profile.heightUnit)}.`
+            : `Not sure? Leave it blank and we'll assume moderate (about ${formatPace(DEFAULT_PACE, profile.heightUnit)}).`}
+        </ThemedText>
+      </View>
+
       <View style={[styles.strideCard, { backgroundColor: colors.banner }]}>
         <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.bannerLabel }]}>
-          Estimated stride
+          Estimated running stride
         </ThemedText>
         {profile.heightCm !== null ? (
           <>
             <ThemedText type="subtitle" style={{ color: colors.bannerText }}>
-              {formatLength(estimateStrideLengthCm(profile.heightCm, profile.gender), profile.heightUnit)}
+              {formatLength(estimateStrideLengthCm(profile.heightCm, profile.pace), profile.heightUnit)}
             </ThemedText>
             <ThemedText type="small" style={{ color: colors.bannerText }}>
-              A rough estimate based on your height{profile.gender ? ' and gender' : ''}.
+              Per step, at {profile.pace ?? DEFAULT_PACE} pace. A rough estimate based on your height.
             </ThemedText>
           </>
         ) : (
-          <ThemedText style={{ color: colors.bannerText }}>Add your height to see your estimated stride.</ThemedText>
+          <ThemedText style={{ color: colors.bannerText }}>Add your height to see your estimated running stride.</ThemedText>
         )}
       </View>
     </ScrollView>
