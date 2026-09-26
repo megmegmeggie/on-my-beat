@@ -45,7 +45,11 @@ function haversineDistanceMeters(
   lat2: number,
   lon2: number
 ): number {
+<<<<<<< HEAD
   const R = 6371e3; // Earth radius in meters
+=======
+  const R = 6371e3;
+>>>>>>> gps-tracking
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -130,7 +134,10 @@ export function useGpsTracking(active: boolean) {
           const { coords, timestamp } = location;
           const { latitude, longitude, speed, accuracy } = coords;
 
+<<<<<<< HEAD
           // Discard inaccurate readings.
+=======
+>>>>>>> gps-tracking
           if (accuracy !== null && accuracy > MAX_ACCURACY_METERS) {
             return;
           }
@@ -145,13 +152,19 @@ export function useGpsTracking(active: boolean) {
               latitude,
               longitude
             );
+<<<<<<< HEAD
             // Filter out GPS jitter — ignore tiny movements.
+=======
+>>>>>>> gps-tracking
             if (dist >= MIN_DISTANCE_METERS) {
               segmentDistanceMeters = dist;
               totalDistanceMetersRef.current += dist;
             }
           } else {
+<<<<<<< HEAD
             // First reading — start the clock.
+=======
+>>>>>>> gps-tracking
             startTimeRef.current = timestamp;
           }
 
@@ -166,7 +179,10 @@ export function useGpsTracking(active: boolean) {
             }
           }
 
+<<<<<<< HEAD
           // Use device speed if available and reasonable.
+=======
+>>>>>>> gps-tracking
           if (speed !== null && speed > 0.5) {
             currentPace = 1 / (speed / METERS_PER_MILE);
           }
