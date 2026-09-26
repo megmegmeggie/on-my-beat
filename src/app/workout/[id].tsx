@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,14 +12,22 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PLAN_IDS } from '@/hooks/use-selected-plan';
 import { useCadence } from '@/lib/cadence';
 import { useSegmentMusic } from '@/lib/music';
-import { type CadenceFeedback, cadenceFeedback, type RunSessionState, useRunSession } from '@/lib/run-session';
-import { completePlanWorkout, getCustomWorkout } from '@/lib/storage';
+import {
+  averageCadence,
+  type CadenceFeedback,
+  cadenceFeedback,
+  type RunSessionState,
+  useRunSession,
+} from '@/lib/run-session';
+import { addRunRecord, completePlanWorkout, getCustomWorkout } from '@/lib/storage';
 import type { Workout } from '@/lib/types';
 import { getBuiltInWorkout, PLANS } from '@/lib/workouts';
 import { formatDuration } from '@/utils/formatting';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
 
+/** Runs ended within this many seconds aren't saved to history. */
+const MIN_SAVED_RUN_SEC = 5;
 const SIMULATED_MIN_SPM = 120;
 const SIMULATED_MAX_SPM = 200;
 
@@ -65,10 +73,31 @@ export default function WorkoutScreen() {
 
   const workout = builtIn ?? custom;
 
-  function handleFinished(state: RunSessionState) {
-    if (state.completed && planId && workout) {
-      void completePlanWorkout(planId, PLANS[planId], workout.id);
+  async function handleFinished(state: RunSessionState, startedAt: Date) {
+    if (!workout) {
+      return;
     }
+    const durationSec = Math.round(state.activeMs / 1000);
+    if (!state.completed && durationSec < MIN_SAVED_RUN_SEC) {
+      goBack();
+      return;
+    }
+    if (state.completed && planId) {
+      await completePlanWorkout(planId, PLANS[planId], workout.id);
+    }
+    const recordId = `run-${startedAt.getTime()}`;
+    await addRunRecord({
+      id: recordId,
+      workoutId: workout.id,
+      workoutName: workout.name,
+      startedAt: startedAt.toISOString(),
+      durationSec,
+      averageCadence: averageCadence(state),
+      timeOnTargetSec: Math.round(state.onTargetMs / 1000),
+      completed: state.completed,
+    });
+    // Replace, so Back from the summary doesn't return to a finished run.
+    router.replace({ pathname: '/summary/[id]', params: { id: recordId } });
   }
 
   return (
@@ -96,7 +125,7 @@ function RunView({
 }: {
   workout: Workout;
   colors: Colors;
-  onFinished: (state: RunSessionState) => void;
+  onFinished: (state: RunSessionState, startedAt: Date) => void;
 }) {
   useKeepAwake();
   const cadence = useCadence();
@@ -111,16 +140,18 @@ function RunView({
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
   const feedbackTextColor = feedback === 'on-target' ? colors.bannerText : colors.cardText;
 
+  const startedAt = useRef<Date | null>(null);
   const finished = state.status === 'finished';
   useEffect(() => {
     if (finished) {
-      onFinished(state);
+      onFinished(state, startedAt.current ?? new Date());
     }
     // Report once, when the run finishes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
 
   function start() {
+    startedAt.current = new Date();
     run.start();
     void cadence.start();
   }
@@ -131,17 +162,8 @@ function RunView({
   }
 
   if (state.status === 'finished') {
-    return (
-      <View style={styles.content}>
-        <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
-          {state.completed ? 'Done!' : 'Run ended'}
-        </ThemedText>
-        <ThemedText style={{ color: colors.cardSubtext }}>
-          {formatDuration(state.activeMs / 1000)} of running.
-        </ThemedText>
-        <ActionButton label="Back" onPress={goBack} colors={colors} />
-      </View>
-    );
+    // Saving, then the summary screen replaces this one.
+    return null;
   }
 
   return (
