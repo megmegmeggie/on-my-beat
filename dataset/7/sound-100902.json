@@ -1,0 +1,1 @@
+{"instrumentation": {"percussion": false, "bass": false, "chords": false, "melody": true, "fx": false, "vocal": false}, "bpm": "120", "signature": "4/4", "well_cut": true, "key": "c", "mode": "min", "genres": ["cinematic", "electronic"], "comments": "The description says change bpm 120 to 112, but somehow 120 sounds fine for me", "discard": false}
