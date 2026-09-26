@@ -66,7 +66,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title" style={[styles.welcome, { color: colors.heading }]}>
-            Welcome
+            Welcome!
           </ThemedText>
 
           <View style={[styles.statusCard, { backgroundColor: colors.banner }]}>
