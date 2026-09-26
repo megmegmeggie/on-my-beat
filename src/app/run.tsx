@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useCadence } from '@/hooks/useCadence';
 import { formatDuration } from '@/utils/formatting';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
@@ -97,6 +98,8 @@ export default function RunScreen() {
           </View>
 
           {mode === 'distance' ? <DistanceSetup colors={colors} /> : <FartlekSetup colors={colors} />}
+
+          <CadenceCard colors={colors} />
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -237,6 +240,52 @@ function FartlekSetup({ colors }: { colors: Colors }) {
 
       <SummaryCard label="Your fartlek" summary={summary} problem={problem} colors={colors} />
     </>
+  );
+}
+
+function CadenceCard({ colors }: { colors: Colors }) {
+  const cadence = useCadence();
+  const isActive = cadence.status === 'tracking' || cadence.status === 'starting';
+
+  const message = {
+    idle: 'Start, then walk or run with your phone on you to see your steps per minute.',
+    starting: 'Starting…',
+    tracking: `${cadence.totalSteps} ${cadence.totalSteps === 1 ? 'step' : 'steps'} counted. Keep the app open while you move.`,
+    unavailable: "This device doesn't have a motion sensor. Try it on a phone.",
+    denied: 'Motion access was turned off. Allow it in your phone settings to track cadence.',
+  }[cadence.status];
+
+  return (
+    <View style={[styles.cadenceCard, { backgroundColor: colors.card }]}>
+      <View style={styles.cadenceHeader}>
+        <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
+          Live cadence
+        </ThemedText>
+        <Pressable
+          onPress={isActive ? cadence.stop : cadence.start}
+          disabled={cadence.status === 'starting'}
+          accessibilityRole="button"
+          accessibilityLabel={isActive ? 'Stop cadence tracking' : 'Start cadence tracking'}
+          style={({ pressed }) => [
+            styles.cadenceButton,
+            { backgroundColor: isActive ? colors.card : colors.banner, borderColor: colors.banner },
+            pressed && styles.pressed,
+          ]}>
+          <ThemedText type="smallBold" style={{ color: isActive ? colors.cardText : colors.bannerText }}>
+            {isActive ? 'Stop' : 'Start'}
+          </ThemedText>
+        </Pressable>
+      </View>
+      {cadence.status === 'tracking' && (
+        <ThemedText type="subtitle" style={{ color: colors.cardText }}>
+          {cadence.stepsPerMinute ?? '—'}
+          <ThemedText style={{ color: colors.cardSubtext }}> steps/min</ThemedText>
+        </ThemedText>
+      )}
+      <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+        {message}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -444,6 +493,22 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.four,
     marginTop: Spacing.two,
+  },
+  cadenceCard: {
+    gap: Spacing.two,
+    padding: Spacing.four,
+    borderRadius: Spacing.four,
+  },
+  cadenceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cadenceButton: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderRadius: 999,
+    borderWidth: 2,
   },
   pressed: {
     opacity: 0.7,
