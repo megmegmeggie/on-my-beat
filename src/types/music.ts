@@ -9,10 +9,15 @@ export type Song = {
   id: string;
   title: string;
   artist: string;
+  /** Beats per minute — the primary signal for cadence matching. */
+  bpm: number;
+  /** Track duration in seconds. */
+  duration: number;
   /** Remote URL or `require()`d module id. */
   source: AudioSource;
   albumTitle?: string;
   artworkUrl?: string;
+  genre?: string;
   /**
    * Optional intensity hint, e.g. 0-1. The recommendation engine can use it to
    * match a track to a target cadence.
