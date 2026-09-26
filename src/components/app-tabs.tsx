@@ -20,6 +20,11 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="run">
+        <NativeTabs.Trigger.Label>Run</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="figure.run" md="directions_run" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="explore">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
