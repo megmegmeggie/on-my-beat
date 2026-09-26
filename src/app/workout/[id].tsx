@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCadence } from '@/lib/cadence';
+import { useSegmentMusic } from '@/lib/music';
 import { type CadenceFeedback, cadenceFeedback, useRunSession } from '@/lib/run-session';
 import type { Workout } from '@/lib/types';
 import { getBuiltInWorkout } from '@/lib/workouts';
@@ -67,6 +68,7 @@ function RunView({ workout, colors }: { workout: Workout; colors: Colors }) {
   const currentCadence = simulating ? simulatedCadence : cadence.stepsPerMinute;
   const run = useRunSession(workout, currentCadence);
   const { state, segment, nextSegment } = run;
+  const music = useSegmentMusic(segment.targetCadence, state.status === 'running');
 
   const feedback = cadenceFeedback(currentCadence, segment.targetCadence);
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
@@ -157,6 +159,20 @@ function RunView({ workout, colors }: { workout: Workout; colors: Colors }) {
             thumbTintColor={colors.gold}
             accessibilityLabel="Simulated cadence"
           />
+        </View>
+      )}
+
+      {music && (
+        <View style={[styles.nowPlaying, { borderColor: colors.radio }]}>
+          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+            {music.track.file ? (state.status === 'running' ? 'Now playing' : 'Up next') : 'Music (no audio file yet)'}
+          </ThemedText>
+          <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+            {music.track.title}
+          </ThemedText>
+          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+            {music.track.bpm} BPM{music.halfTime ? ` · half-time, matches ${music.matchedBpm} spm` : ''}
+          </ThemedText>
         </View>
       )}
 
@@ -282,6 +298,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     padding: Spacing.three,
     borderRadius: Spacing.three,
+  },
+  nowPlaying: {
+    gap: Spacing.half,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: 1,
   },
   controls: {
     flexDirection: 'row',
