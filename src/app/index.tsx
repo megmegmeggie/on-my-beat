@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type PlanId, useSelectedPlan } from '@/hooks/use-selected-plan';
 
@@ -25,39 +25,9 @@ const PLANS: Plan[] = [
   { id: 'marathon', name: 'Marathon', distance: '26.2 mi', description: 'Train for the full distance.' },
 ];
 
-// Green and gold palette for the home screen only; the app-wide theme is unchanged.
-const HomeColors = {
-  light: {
-    heading: '#1F6B3A',
-    banner: '#1F6B3A',
-    bannerText: '#FFFFFF',
-    bannerLabel: '#F2D27A',
-    gold: '#C9A227',
-    goldText: '#8A6D12',
-    card: '#EEF5EF',
-    cardSelected: '#FBF3D9',
-    cardText: '#12311F',
-    cardSubtext: '#4A5D50',
-    radio: '#7C9484',
-  },
-  dark: {
-    heading: '#6FCF8F',
-    banner: '#1E5A36',
-    bannerText: '#FFFFFF',
-    bannerLabel: '#F2D27A',
-    gold: '#E6C15A',
-    goldText: '#E6C15A',
-    card: '#16241B',
-    cardSelected: '#2C2512',
-    cardText: '#F1F5F2',
-    cardSubtext: '#A9B8AE',
-    radio: '#6B8373',
-  },
-} as const;
-
 export default function HomeScreen() {
   const scheme = useColorScheme();
-  const colors = HomeColors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = BrandColors[scheme === 'dark' ? 'dark' : 'light'];
   const [selectedPlan, setSelectedPlan] = useSelectedPlan();
   const currentPlan = PLANS.find((plan) => plan.id === selectedPlan);
 
