@@ -114,7 +114,7 @@ function PlanView({ planId, colors }: { planId: PlanId; colors: Colors }) {
             onPress={() => startWorkout(nextWorkout)}
             accessibilityRole="button"
             style={({ pressed }) => [styles.startButton, { backgroundColor: colors.bannerLabel }, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+            <ThemedText type="smallBold" style={{ color: colors.banner }}>
               Start
             </ThemedText>
           </Pressable>

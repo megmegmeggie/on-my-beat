@@ -334,7 +334,7 @@ function StartButton({ onPress, colors }: { onPress: () => void; colors: Colors 
       onPress={onPress}
       accessibilityRole="button"
       style={({ pressed }) => [styles.startButton, { backgroundColor: colors.gold }, pressed && styles.pressed]}>
-      <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+      <ThemedText type="smallBold" style={{ color: colors.banner }}>
         Start this run
       </ThemedText>
     </Pressable>

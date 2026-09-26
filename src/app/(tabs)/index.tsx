@@ -119,7 +119,7 @@ export default function HomeScreen() {
                   { backgroundColor: colors.bannerLabel },
                   pressed && styles.pressed,
                 ]}>
-                <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+                <ThemedText type="smallBold" style={{ color: colors.banner }}>
                   Continue plan
                 </ThemedText>
               </Pressable>
