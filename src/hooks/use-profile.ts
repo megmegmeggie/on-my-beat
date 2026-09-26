@@ -95,9 +95,9 @@ export const MAX_HEIGHT_CM = 250;
 // 1 m/s of speed, and −4 steps/min per extra 5 cm of leg length (leg ≈ 0.53 ×
 // height). It is a starting guess; measured cadence and speed will be better.
 export const PACE_SECONDS_PER_MILE: Record<Pace, number> = {
-  easy: 11 * 60,
-  moderate: 9 * 60 + 30,
-  fast: 8 * 60,
+  easy: 10 * 60,
+  moderate: 7 * 60 + 30,
+  fast: 5 * 60 + 30,
 };
 export const DEFAULT_PACE: Pace = 'moderate';
 
