@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { formatPace } from '@/lib/gps';
 import { getRunHistory } from '@/lib/storage';
 import type { RunRecord } from '@/lib/types';
 import { formatDuration } from '@/utils/formatting';
@@ -20,7 +21,6 @@ export default function SummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const scheme = useColorScheme();
   const colors = BrandColors[scheme === 'dark' ? 'dark' : 'light'];
-  // Undefined while loading.
   const [history, setHistory] = useState<RunRecord[] | undefined>(undefined);
 
   useEffect(() => {
@@ -44,35 +44,45 @@ export default function SummaryScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {history === undefined ? null : record ? (
             <>
-              <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
-                {record.completed ? 'Nice run!' : 'Run ended'}
-              </ThemedText>
-              <ThemedText style={{ color: colors.cardSubtext }}>
-                {record.workoutName} · {formatDate(record.startedAt)}
-                {record.completed ? '' : ' · ended early'}
-              </ThemedText>
+              <View style={styles.header}>
+                <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
+                  {record.completed ? 'Nice run!' : 'Run ended'}
+                </ThemedText>
+                <ThemedText style={{ color: colors.cardSubtext }}>
+                  {record.workoutName} · {formatDate(record.startedAt)}
+                  {record.completed ? '' : ' · ended early'}
+                </ThemedText>
+              </View>
 
-              <View style={styles.stats}>
-                <Stat label="Time" value={formatDuration(record.durationSec)} colors={colors} />
-                <Stat
+              <View style={styles.statsGrid}>
+                <StatCard label="Time" value={formatDuration(record.durationSec)} colors={colors} />
+                <StatCard
                   label="Avg cadence"
                   value={record.averageCadence === null ? '—' : String(record.averageCadence)}
-                  unit="steps/min"
+                  unit="spm"
                   colors={colors}
                 />
+                {record.distanceMiles != null && (
+                  <StatCard label="Distance" value={record.distanceMiles.toFixed(2)} unit="mi" colors={colors} />
+                )}
+                {record.averagePaceSecPerMile != null && (
+                  <StatCard label="Avg pace" value={formatPace(record.averagePaceSecPerMile)} unit="/mi" colors={colors} />
+                )}
               </View>
+
               <View style={[styles.onTarget, { backgroundColor: colors.banner }]}>
-                <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.bannerLabel }]}>
-                  Time on target
-                </ThemedText>
-                <ThemedText type="subtitle" style={{ color: colors.bannerText }}>
-                  {formatDuration(record.timeOnTargetSec)}
-                  {record.durationSec > 0 && (
-                    <ThemedText style={{ color: colors.bannerText }}>
-                      {'  '}
-                      {Math.round((record.timeOnTargetSec / record.durationSec) * 100)}% of the run
-                    </ThemedText>
-                  )}
+                <View style={styles.onTargetHeader}>
+                  <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.bannerLabel }]}>
+                    On target
+                  </ThemedText>
+                  <ThemedText type="smallBold" style={{ color: colors.bannerText }}>
+                    {record.durationSec > 0
+                      ? `${Math.round((record.timeOnTargetSec / record.durationSec) * 100)}%`
+                      : '—'}
+                  </ThemedText>
+                </View>
+                <ThemedText style={{ color: colors.bannerText }}>
+                  {formatDuration(record.timeOnTargetSec)} of {formatDuration(record.durationSec)}
                 </ThemedText>
               </View>
             </>
@@ -99,17 +109,28 @@ export default function SummaryScreen() {
               {earlierRuns.map((run) => (
                 <View key={run.id} style={[styles.historyRow, { backgroundColor: colors.card }]}>
                   <View style={styles.historyInfo}>
-                    <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+                    <ThemedText type="smallBold" numberOfLines={1} style={{ color: colors.cardText }}>
                       {run.workoutName}
                     </ThemedText>
                     <ThemedText type="small" style={{ color: colors.cardSubtext }}>
                       {formatDate(run.startedAt)}
                     </ThemedText>
                   </View>
-                  <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-                    {formatDuration(run.durationSec)}
-                    {run.averageCadence === null ? '' : ` · ${run.averageCadence} spm`}
-                  </ThemedText>
+                  <View style={styles.historyStats}>
+                    <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+                      {formatDuration(run.durationSec)}
+                    </ThemedText>
+                    {run.distanceMiles != null && (
+                      <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+                        {run.distanceMiles.toFixed(1)} mi
+                      </ThemedText>
+                    )}
+                    {run.averageCadence != null && (
+                      <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+                        {run.averageCadence} spm
+                      </ThemedText>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>
@@ -120,18 +141,30 @@ export default function SummaryScreen() {
   );
 }
 
-function Stat({ label, value, unit, colors }: { label: string; value: string; unit?: string; colors: Colors }) {
+function StatCard({
+  label,
+  value,
+  unit,
+  colors,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  colors: Colors;
+}) {
   return (
-    <View style={[styles.stat, { backgroundColor: colors.card }]}>
+    <View style={[styles.statCard, { backgroundColor: colors.card }]}>
       <ThemedText type="small" style={{ color: colors.cardSubtext }}>
         {label}
       </ThemedText>
-      <ThemedText style={[styles.statValue, { color: colors.cardText }]}>{value}</ThemedText>
-      {unit && (
-        <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-          {unit}
-        </ThemedText>
-      )}
+      <View style={styles.statValueRow}>
+        <ThemedText style={[styles.statValue, { color: colors.cardText }]}>{value}</ThemedText>
+        {unit && (
+          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+            {unit}
+          </ThemedText>
+        )}
+      </View>
     </View>
   );
 }
@@ -153,7 +186,10 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.four,
     paddingTop: Spacing.six,
-    gap: Spacing.four,
+    gap: Spacing.three,
+  },
+  header: {
+    gap: Spacing.half,
   },
   title: {
     fontSize: 48,
@@ -164,26 +200,39 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  stats: {
+  statsGrid: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    flexWrap: 'wrap',
+    gap: Spacing.two,
   },
-  stat: {
-    flex: 1,
+  statCard: {
+    flexGrow: 1,
+    flexBasis: '46%',
     alignItems: 'center',
     padding: Spacing.three,
-    borderRadius: Spacing.four,
+    borderRadius: Spacing.three,
+    gap: Spacing.half,
+  },
+  statValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.half,
   },
   statValue: {
-    fontSize: 40,
-    lineHeight: 48,
+    fontSize: 28,
+    lineHeight: 36,
     fontWeight: 700,
     fontVariant: ['tabular-nums'],
   },
   onTarget: {
-    gap: Spacing.one,
-    padding: Spacing.four,
-    borderRadius: Spacing.four,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  onTargetHeader: {
+    gap: Spacing.half,
   },
   doneButton: {
     alignItems: 'center',
@@ -202,6 +251,10 @@ const styles = StyleSheet.create({
   },
   historyInfo: {
     flex: 1,
+    gap: Spacing.half,
+  },
+  historyStats: {
+    alignItems: 'flex-end',
     gap: Spacing.half,
   },
   pressed: {
