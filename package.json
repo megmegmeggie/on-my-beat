@@ -7,6 +7,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "5.2.0",
     "expo": "~57.0.25",
+    "expo-asset": "~57.0.18",
     "expo-audio": "~57.0.5",
     "expo-constants": "~57.0.19",
     "expo-device": "~57.0.2",
@@ -34,6 +35,8 @@
   "devDependencies": {
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
