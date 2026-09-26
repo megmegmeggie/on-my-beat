@@ -31,7 +31,7 @@ function intervals(rounds: number, fastMins: number, recoveryMins: number): Segm
 
 const easyRun = (id: string, mins: number): Workout => ({
   id,
-  name: `Easy run · ${mins} min`,
+  name: 'Easy run',
   segments: [warmUp(), minutes('Easy', mins - 10, CADENCE.easy), coolDown()],
 });
 
@@ -49,7 +49,7 @@ const tempoRun = (id: string, tempoMins: number): Workout => ({
 
 const longRun = (id: string, mins: number): Workout => ({
   id,
-  name: `Long run · ${mins} min`,
+  name: 'Long run',
   segments: [warmUp(), minutes('Steady', mins - 10, CADENCE.steady), coolDown()],
 });
 

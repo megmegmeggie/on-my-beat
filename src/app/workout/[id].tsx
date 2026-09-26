@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,11 +9,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { PLAN_IDS } from '@/hooks/use-selected-plan';
 import { useCadence } from '@/lib/cadence';
 import { useSegmentMusic } from '@/lib/music';
-import { type CadenceFeedback, cadenceFeedback, useRunSession } from '@/lib/run-session';
+import { type CadenceFeedback, cadenceFeedback, type RunSessionState, useRunSession } from '@/lib/run-session';
+import { completePlanWorkout, getCustomWorkout } from '@/lib/storage';
 import type { Workout } from '@/lib/types';
-import { getBuiltInWorkout } from '@/lib/workouts';
+import { getBuiltInWorkout, PLANS } from '@/lib/workouts';
 import { formatDuration } from '@/utils/formatting';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
@@ -37,17 +39,44 @@ function goBack() {
 }
 
 export default function WorkoutScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `plan` is set when the workout was started from a training plan.
+  const { id, plan } = useLocalSearchParams<{ id: string; plan?: string }>();
+  const planId = PLAN_IDS.find((candidate) => candidate === plan);
   const scheme = useColorScheme();
   const colors = BrandColors[scheme === 'dark' ? 'dark' : 'light'];
-  const workout = getBuiltInWorkout(id);
+  const builtIn = getBuiltInWorkout(id);
+  // Custom workouts load from storage: undefined while loading, null if missing.
+  const [custom, setCustom] = useState<Workout | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (builtIn) {
+      return;
+    }
+    let cancelled = false;
+    getCustomWorkout(id).then((found) => {
+      if (!cancelled) {
+        setCustom(found ?? null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [builtIn, id]);
+
+  const workout = builtIn ?? custom;
+
+  function handleFinished(state: RunSessionState) {
+    if (state.completed && planId && workout) {
+      void completePlanWorkout(planId, PLANS[planId], workout.id);
+    }
+  }
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {workout ? (
-          <RunView workout={workout} colors={colors} />
-        ) : (
+          <RunView workout={workout} colors={colors} onFinished={handleFinished} />
+        ) : workout === undefined ? null : (
           <View style={styles.content}>
             <ThemedText type="subtitle" style={{ color: colors.heading }}>
               Workout not found
@@ -60,7 +89,15 @@ export default function WorkoutScreen() {
   );
 }
 
-function RunView({ workout, colors }: { workout: Workout; colors: Colors }) {
+function RunView({
+  workout,
+  colors,
+  onFinished,
+}: {
+  workout: Workout;
+  colors: Colors;
+  onFinished: (state: RunSessionState) => void;
+}) {
   useKeepAwake();
   const cadence = useCadence();
   const [simulating, setSimulating] = useState(false);
@@ -73,6 +110,15 @@ function RunView({ workout, colors }: { workout: Workout; colors: Colors }) {
   const feedback = cadenceFeedback(currentCadence, segment.targetCadence);
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
   const feedbackTextColor = feedback === 'on-target' ? colors.bannerText : colors.cardText;
+
+  const finished = state.status === 'finished';
+  useEffect(() => {
+    if (finished) {
+      onFinished(state);
+    }
+    // Report once, when the run finishes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
 
   function start() {
     run.start();

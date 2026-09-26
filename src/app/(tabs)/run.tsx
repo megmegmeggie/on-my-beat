@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { type ComponentProps, type ReactNode, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,7 +7,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { estimateCadenceSpm, useProfile } from '@/hooks/use-profile';
 import { useCadence } from '@/lib/cadence';
+import { saveCustomWorkout } from '@/lib/storage';
+import type { Segment } from '@/lib/types';
+import { CADENCE } from '@/lib/workouts';
 import { formatDuration } from '@/utils/formatting';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
@@ -39,6 +44,17 @@ const MAX_PACE_SECONDS = 30 * 60;
 const MAX_WORKOUT_MINUTES = 300;
 const MIN_INTERVAL_SECONDS = 5;
 
+const METERS_PER_MILE = 1609.344;
+/** Height used for the cadence estimate when the profile has none. */
+const DEFAULT_HEIGHT_CM = 170;
+
+/** Saves the custom run so it can be reopened, then starts it on the run screen. */
+async function startCustomRun(name: string, segments: Segment[]) {
+  const id = `custom-${Date.now()}`;
+  await saveCustomWorkout({ id, name, segments });
+  router.push({ pathname: '/workout/[id]', params: { id } });
+}
+
 const onlyDigits = (text: string) => text.replace(/[^0-9]/g, '');
 // Digits with at most one decimal point.
 const onlyDecimal = (text: string) => text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
@@ -66,7 +82,7 @@ export default function RunScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
-            Run
+            Custom run
           </ThemedText>
 
           <View style={styles.modeRow} accessibilityRole="radiogroup">
@@ -107,6 +123,7 @@ export default function RunScreen() {
 }
 
 function DistanceSetup({ colors }: { colors: Colors }) {
+  const [profile] = useProfile();
   const [miles, setMiles] = useState('');
   const [pace, setPace] = useState<TimeDraft>({ minutes: '', seconds: '' });
 
@@ -161,6 +178,17 @@ function DistanceSetup({ colors }: { colors: Colors }) {
       </Field>
 
       <SummaryCard label="Estimated time" summary={summary} problem={problem} colors={colors} />
+      {summary && distance !== null && paceSeconds !== null && (
+        <StartButton
+          colors={colors}
+          onPress={() => {
+            const speedMps = METERS_PER_MILE / paceSeconds;
+            const targetCadence = Math.round(estimateCadenceSpm(profile?.heightCm ?? DEFAULT_HEIGHT_CM, speedMps));
+            const label = `${distance} mi at ${formatDuration(paceSeconds)}/mi`;
+            void startCustomRun(label, [{ label: 'Run', durationSec: Math.round(distance * paceSeconds), targetCadence }]);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -175,6 +203,7 @@ function FartlekSetup({ colors }: { colors: Colors }) {
   const easySeconds = toSeconds(easy);
 
   let summary: { value: string; detail: string } | null = null;
+  let segments: Segment[] = [];
   let problem = 'Enter a total time to see your intervals.';
   if (totalSeconds !== null && (totalSeconds <= 0 || totalSeconds > MAX_WORKOUT_MINUTES * 60)) {
     problem = `Total time should be between 1 and ${MAX_WORKOUT_MINUTES} minutes.`;
@@ -188,6 +217,13 @@ function FartlekSetup({ colors }: { colors: Colors }) {
     const roundSeconds = fastSeconds + easySeconds;
     const rounds = Math.floor(totalSeconds / roundSeconds);
     const leftover = totalSeconds - rounds * roundSeconds;
+    segments = Array.from({ length: rounds }, (_, i) => [
+      { label: `Fast ${i + 1} of ${rounds}`, durationSec: fastSeconds, targetCadence: CADENCE.fast },
+      { label: `Easy ${i + 1} of ${rounds}`, durationSec: easySeconds, targetCadence: CADENCE.recovery },
+    ]).flat();
+    if (leftover > 0) {
+      segments.push({ label: 'Easy to finish', durationSec: leftover, targetCadence: CADENCE.recovery });
+    }
     summary = {
       value: `${rounds} ${rounds === 1 ? 'round' : 'rounds'}`,
       detail:
@@ -239,6 +275,9 @@ function FartlekSetup({ colors }: { colors: Colors }) {
       </Field>
 
       <SummaryCard label="Your fartlek" summary={summary} problem={problem} colors={colors} />
+      {summary && (
+        <StartButton colors={colors} onPress={() => void startCustomRun(`Fartlek · ${totalMinutes} min`, segments)} />
+      )}
     </>
   );
 }
@@ -286,6 +325,19 @@ function CadenceCard({ colors }: { colors: Colors }) {
         {message}
       </ThemedText>
     </View>
+  );
+}
+
+function StartButton({ onPress, colors }: { onPress: () => void; colors: Colors }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.startButton, { backgroundColor: colors.gold }, pressed && styles.pressed]}>
+      <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+        Start this run
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -493,6 +545,11 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     borderRadius: Spacing.four,
     marginTop: Spacing.two,
+  },
+  startButton: {
+    alignItems: 'center',
+    paddingVertical: Spacing.three,
+    borderRadius: 999,
   },
   cadenceCard: {
     gap: Spacing.two,
