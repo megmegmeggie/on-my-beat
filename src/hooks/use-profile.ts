@@ -97,7 +97,17 @@ const BASE_HEIGHT_CM = 170;
 const CADENCE_PER_MPS = 6;
 const CADENCE_PER_HEIGHT_CM = -0.42;
 
-function estimateCadenceSpm(heightCm: number, speedMps: number) {
+export function paceToSpeedMps(pace: Pace | null) {
+  return METERS_PER_MILE / PACE_SECONDS_PER_MILE[pace ?? DEFAULT_PACE];
+}
+
+/**
+ * Estimated running cadence in steps per minute for a runner of `heightCm` at
+ * `speedMps` (use `paceToSpeedMps` for a pace choice, or a live GPS speed).
+ * Use this rather than deriving cadence from the stride estimate, which is
+ * itself calculated from this cadence. Prefer measured cadence when available.
+ */
+export function estimateCadenceSpm(heightCm: number, speedMps: number) {
   return (
     BASE_CADENCE_SPM +
     CADENCE_PER_MPS * (speedMps - BASE_SPEED_MPS) +
@@ -106,7 +116,7 @@ function estimateCadenceSpm(heightCm: number, speedMps: number) {
 }
 
 export function estimateStrideLengthCm(heightCm: number, pace: Pace | null) {
-  const speedMps = METERS_PER_MILE / PACE_SECONDS_PER_MILE[pace ?? DEFAULT_PACE];
+  const speedMps = paceToSpeedMps(pace);
   const stepsPerSecond = estimateCadenceSpm(heightCm, speedMps) / 60;
   return (speedMps / stepsPerSecond) * 100;
 }
