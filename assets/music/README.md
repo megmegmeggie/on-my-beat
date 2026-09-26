@@ -1,13 +1,15 @@
 # Music for runs
 
-Drop audio files (mp3 or m4a) here, then register each one in `src/lib/tracks.ts`:
+Drop audio files (mp3 or m4a) here, then point a song at the file in `src/data/songs.ts`:
 
 ```ts
-{ title: 'Song name', file: require('../../assets/music/song-name.mp3'), bpm: 170 },
+{ id: 'song-051', title: 'Song name', artist: 'Artist', bpm: 170, duration: 210,
+  source: require('../../assets/music/song-name.mp3') },
 ```
 
-- `bpm` is the song's real tempo. The run screen picks the song closest to the
-  current segment's target cadence (155–180 steps/min in `src/lib/workouts.ts`).
-- Half-time songs count: a 85 BPM song matches 170 steps/min.
+- That one catalogue feeds both the Music tab and the run screen.
+- `bpm` is the song's real tempo. During a run, the song closest to the current
+  segment's target cadence (155–180 steps/min in `src/lib/workouts.ts`) plays.
+- Half-time songs count: an 85 BPM song matches 170 steps/min.
 - Only `require` files that exist here, or the app won't build.
 - Use music you have the rights to use (your own, royalty-free, or licensed).

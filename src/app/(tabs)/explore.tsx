@@ -61,7 +61,7 @@ export default function MusicScreen() {
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="subtitle">Music</ThemedText>
           <ThemedText themeColor="textSecondary">
-            Pick a track to play during your run.
+            Browse the song library. During a run, songs are picked automatically to match your target cadence.
           </ThemedText>
         </ThemedView>
 
@@ -100,7 +100,7 @@ export default function MusicScreen() {
                     {song.title}
                   </ThemedText>
                   <ThemedText themeColor="textSecondary" numberOfLines={1}>
-                    {song.artist}
+                    {song.artist} · {song.bpm} BPM
                   </ThemedText>
                 </View>
 

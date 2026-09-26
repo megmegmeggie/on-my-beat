@@ -134,7 +134,7 @@ function RunView({
   const currentCadence = simulating ? simulatedCadence : cadence.stepsPerMinute;
   const run = useRunSession(workout, currentCadence);
   const { state, segment, nextSegment } = run;
-  const music = useSegmentMusic(segment.targetCadence, state.status === 'running');
+  const { pick: music, nextSong } = useSegmentMusic(segment.targetCadence, state.status === 'running');
 
   const feedback = cadenceFeedback(currentCadence, segment.targetCadence);
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
@@ -232,15 +232,27 @@ function RunView({
 
       {music && (
         <View style={[styles.nowPlaying, { borderColor: colors.radio }]}>
-          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-            {music.track.file ? (state.status === 'running' ? 'Now playing' : 'Up next') : 'Music (no audio file yet)'}
-          </ThemedText>
-          <ThemedText type="smallBold" style={{ color: colors.cardText }}>
-            {music.track.title}
-          </ThemedText>
-          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-            {music.track.bpm} BPM{music.halfTime ? ` · half-time, matches ${music.matchedBpm} spm` : ''}
-          </ThemedText>
+          <View style={styles.nowPlayingInfo}>
+            <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+              {music.track.file ? (state.status === 'running' ? 'Now playing' : 'Up next') : 'Music (no audio file yet)'}
+            </ThemedText>
+            <ThemedText type="smallBold" style={{ color: colors.cardText }} numberOfLines={1}>
+              {music.track.title}
+              {music.track.artist ? ` · ${music.track.artist}` : ''}
+            </ThemedText>
+            <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+              {music.track.bpm} BPM{music.halfTime ? ` · half-time, matches ${music.matchedBpm} spm` : ''}
+            </ThemedText>
+          </View>
+          <Pressable
+            onPress={nextSong}
+            accessibilityRole="button"
+            accessibilityLabel="Next song"
+            style={({ pressed }) => [styles.nextSong, { borderColor: colors.radio }, pressed && styles.pressed]}>
+            <ThemedText type="smallBold" style={{ color: colors.cardText }}>
+              Next song
+            </ThemedText>
+          </Pressable>
         </View>
       )}
 
@@ -368,9 +380,21 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
   },
   nowPlaying: {
-    gap: Spacing.half,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
     padding: Spacing.three,
     borderRadius: Spacing.three,
+    borderWidth: 1,
+  },
+  nowPlayingInfo: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  nextSong: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: 999,
     borderWidth: 1,
   },
   controls: {

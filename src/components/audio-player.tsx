@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { onRunMusicStart } from '@/lib/music';
 import type { AudioSource } from '@/types/music';
 import { formatDuration } from '@/utils/formatting';
 
@@ -61,6 +62,9 @@ export function AudioPlayer({
   const position = isScrubbing ? scrubPosition : status.currentTime;
   const isReady = status.isLoaded && duration > 0;
   const isMuted = status.mute;
+
+  // Pause when a run starts its own music, so two songs never play at once.
+  useEffect(() => onRunMusicStart(() => player.pause()), [player]);
 
   useEffect(() => {
     // `loop` is a plain assignable property on AudioPlayer with no setter

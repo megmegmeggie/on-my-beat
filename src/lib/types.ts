@@ -6,8 +6,11 @@ export type Workout = { id: string; name: string; segments: Segment[] };
 /** `weeks[w][d]` is the workout for week w + 1, day d + 1. */
 export type Plan = { name: string; weeks: Workout[][] };
 
-/** `file` is a `require('…mp3')` module, or null for a placeholder with no audio yet. */
-export type Track = { title: string; file: any; bpm: number };
+/**
+ * A song the run screen can play. `file` is anything expo-audio accepts (a URL or a
+ * `require('…mp3')` module), or null for a placeholder with no audio yet.
+ */
+export type Track = { title: string; file: any; bpm: number; id?: string; artist?: string };
 
 /** Where the runner is in a plan, zero-based: `{ week: 0, day: 1 }` is "Week 1, Day 2". */
 export type PlanPosition = { week: number; day: number };
