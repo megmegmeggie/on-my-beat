@@ -18,6 +18,10 @@ const PLAN_DETAILS: Record<PlanId, { distance: string; description: string }> = 
   marathon: { distance: '26.2 mi', description: 'Train for the full distance.' },
 };
 
+function sourceCount(planId: PlanId) {
+  return PLANS[planId].evidence.sources.length;
+}
+
 const QUICK_RUN_CARDS: { title: string; detail: string; href: Href }[] = [
   {
     title: 'Intervals',
@@ -158,6 +162,9 @@ export default function HomeScreen() {
                     </View>
                     <ThemedText type="small" style={{ color: colors.cardSubtext }}>
                       {PLAN_DETAILS[planId].description}
+                    </ThemedText>
+                    <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+                      Based on {sourceCount(planId)} sources
                     </ThemedText>
                     <ThemedText type="smallBold" style={{ color: colors.cardText }}>
                       {isCurrent ? 'Current plan · ' : ''}

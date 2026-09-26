@@ -3,8 +3,22 @@ export type Segment = { label: string; durationSec: number; targetCadence: numbe
 
 export type Workout = { id: string; name: string; segments: Segment[] };
 
+/** A study or official programme a plan's design is drawn from. */
+export type TrainingSource = { label: string; detail: string; href: string };
+
+/** One established approach that shaped the plan. */
+export type TrainingApproach = { name: string; summary: string };
+
+/** What the plan is based on, plus where the evidence is contested. */
+export type PlanEvidence = {
+  basis: string;
+  approaches: TrainingApproach[];
+  caveat?: string;
+  sources: TrainingSource[];
+};
+
 /** `weeks[w][d]` is the workout for week w + 1, day d + 1. */
-export type Plan = { name: string; weeks: Workout[][] };
+export type Plan = { name: string; weeks: Workout[][]; evidence: PlanEvidence };
 
 /**
  * A song the run screen can play. `file` is anything expo-audio accepts (a URL or a
