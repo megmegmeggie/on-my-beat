@@ -6,8 +6,13 @@ import type { CadenceReading, CadenceTrackingStatus } from '@/types/cadence';
 const NO_READING: CadenceReading = { stepsPerMinute: null, totalSteps: 0 };
 
 /**
- * Live running cadence from the phone's accelerometer.
+ * Live running cadence from the phone's accelerometer (50 Hz, foreground only).
  * Call `start()` from a button press; tracking stops automatically on unmount.
+ *
+ * Step detection lives in services/cadence/cadenceAlgorithm.ts. Its tuning
+ * constants are at the top of that file: MIN_PEAK_G (the step threshold, in g),
+ * MIN_STEP_INTERVAL_S (min time between steps) and CADENCE_WINDOW_S (how many
+ * seconds of steps the cadence is averaged over).
  */
 export function useCadence() {
   const [status, setStatus] = useState<CadenceTrackingStatus>('idle');

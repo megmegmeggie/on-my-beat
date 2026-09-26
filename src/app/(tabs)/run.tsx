@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useCadence } from '@/hooks/useCadence';
+import { useCadence } from '@/lib/cadence';
 import { formatDuration } from '@/utils/formatting';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
