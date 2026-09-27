@@ -9,8 +9,8 @@ export type Voice = (typeof VOICE_IDS)[number];
 
 /**
  * What's spoken for each cadence feedback state. `no-reading` has no phrase:
- * it happens whenever the step detector loses the runner, so announcing it
- * would be constant noise.
+ * a device with no usable motion sensor would otherwise announce "start
+ * moving" every interval, forever.
  */
 export const FEEDBACK_PHRASE: Record<CadenceFeedback, string | null> = {
   'no-reading': null,
@@ -51,6 +51,13 @@ function speechOptions(voice: Voice): Speech.SpeechOptions {
   return { ...SHARED_OPTIONS, ...VOICE_TUNING[voice] };
 }
 
+/**
+ * How often the runner's current pace is spoken. Announcing on a timer rather
+ * than on every change: readings wobble either side of the tolerance band, so
+ * cueing on change has the voice repeating itself several times a minute.
+ */
+const ANNOUNCE_INTERVAL_MS = 30_000;
+
 /** Says a cue in `voice` immediately, so a voice can be heard before a run. */
 export function previewVoice(voice: Voice) {
   void Speech.stop();
@@ -59,44 +66,52 @@ export function previewVoice(voice: Voice) {
 }
 
 /**
- * Speaks a short phrase whenever `feedback` changes to one that has a phrase,
- * and stays quiet while `enabled` is false. The music ducks underneath a cue
- * and is stopped when the screen goes away.
+ * Speaks the current pace every `ANNOUNCE_INTERVAL_MS` while `enabled` is true,
+ * reading whatever `feedback` is at that moment. The music ducks underneath a
+ * cue and speech is stopped when the screen goes away.
  */
 export function useVoiceCues(feedback: CadenceFeedback, enabled: boolean, voice: Voice) {
-  // The state already announced, so only *changes* are spoken.
-  const announced = useRef<CadenceFeedback | null>(null);
+  // The timer runs between renders, so it can't close over `feedback`.
+  const latest = useRef(feedback);
+
+  useEffect(() => {
+    latest.current = feedback;
+  }, [feedback]);
 
   useEffect(() => {
     if (!enabled) {
-      // Reset so switching cues back on speaks the state the runner is in now.
-      announced.current = null;
       duckMusic(false);
       void Speech.stop();
       return;
     }
-    if (feedback === announced.current) {
-      return;
+
+    function announce() {
+      const phrase = FEEDBACK_PHRASE[latest.current];
+      if (!phrase) {
+        return;
+      }
+      // `speak` queues behind anything already being spoken, so drop whatever
+      // is in flight to keep the newest cue the only one heard.
+      void Speech.stop();
+      Speech.speak(phrase, {
+        ...speechOptions(voice),
+        onStart: () => duckMusic(true),
+        // A cue that never finishes (interrupted, or the engine failing) must
+        // not leave the music ducked.
+        onDone: () => duckMusic(false),
+        onStopped: () => duckMusic(false),
+        onError: () => duckMusic(false),
+      });
     }
-    announced.current = feedback;
-    const phrase = FEEDBACK_PHRASE[feedback];
-    if (!phrase) {
-      return;
-    }
-    // `speak` queues behind anything already being spoken, which leaves cues
-    // trailing the run. Drop whatever in flight so the newest one wins.
-    void Speech.stop();
-    Speech.speak(phrase, {
-      ...speechOptions(voice),
-      onStart: () => duckMusic(true),
-      // A cue that never finishes (interrupted, or the engine failing) must not
-      // leave the music ducked.
-      onDone: () => duckMusic(false),
-      onStopped: () => duckMusic(false),
-      onError: () => duckMusic(false),
-    });
-    // A new voice applies to the next cue, not by interrupting the one playing.
-  }, [enabled, feedback, voice]);
+
+    // Say the opening pace straight away, so a run isn't silent until the first
+    // tick. Drop this line for a strictly-every-30-seconds cadence.
+    announce();
+    const timer = setInterval(announce, ANNOUNCE_INTERVAL_MS);
+    // Clearing on pause also restarts the countdown on resume, so a paused run
+    // never has announcements to catch up on.
+    return () => clearInterval(timer);
+  }, [enabled, voice]);
 
   useEffect(() => {
     return () => {

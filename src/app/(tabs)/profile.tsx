@@ -262,12 +262,12 @@ function ProfileForm({
             trackColor={{ true: colors.gold, false: colors.radio }}
             thumbColor={colors.bannerText}
             accessibilityLabel="Voice cues"
-            accessibilityHint="Speaks faster, slower, or on pace as your cadence changes during a run"
+            accessibilityHint="Reports your current pace every thirty seconds during a run"
           />
         </View>
         <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-          A voice tells you to pick the pace up, ease off, or that you are on target as your cadence drifts during a
-          run. The music dips underneath each cue.
+          Every thirty seconds a voice reports whether to pick the pace up, ease off, or that you are on target. The
+          music dips underneath each cue.
         </ThemedText>
         {profile.voiceCues && (
           <View style={styles.chipRow} accessibilityRole="radiogroup">
