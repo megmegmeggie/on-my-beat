@@ -9,6 +9,8 @@ const MIN_DISTANCE_METERS = 2;
 const MIN_TIME_INTERVAL_MS = 1000;
 /** Accuracy threshold (meters) — readings worse than this are discarded. */
 const MAX_ACCURACY_METERS = 50;
+/** Maximum realistic pace in seconds per mile (20:00/mi). Slower than this is treated as not moving. */
+const MAX_PACE_SEC_PER_MILE = 1200;
 
 export type GpsStatus = 'idle' | 'requesting' | 'tracking' | 'denied' | 'unavailable';
 
@@ -162,13 +164,19 @@ export function useGpsTracking(active: boolean) {
           if (lastTime !== null && segmentDistanceMeters > 0) {
             const elapsedSec = (now - lastTime) / 1000;
             if (elapsedSec > 0) {
-              currentPace = elapsedSec / (segmentDistanceMeters / METERS_PER_MILE);
+              const pace = elapsedSec / (segmentDistanceMeters / METERS_PER_MILE);
+              if (pace <= MAX_PACE_SEC_PER_MILE) {
+                currentPace = pace;
+              }
             }
           }
 
           // Use device speed if available and reasonable.
           if (speed !== null && speed > 0.5) {
-            currentPace = 1 / (speed / METERS_PER_MILE);
+            const pace = 1 / (speed / METERS_PER_MILE);
+            if (pace <= MAX_PACE_SEC_PER_MILE) {
+              currentPace = pace;
+            }
           }
 
           lastLocationRef.current = location;
@@ -179,7 +187,10 @@ export function useGpsTracking(active: boolean) {
           if (startTimeRef.current !== null && totalDistanceMetersRef.current > 0) {
             const totalElapsedSec = (now - startTimeRef.current) / 1000;
             if (totalElapsedSec > 0) {
-              averagePace = totalElapsedSec / totalDistanceMiles;
+              const pace = totalElapsedSec / totalDistanceMiles;
+              if (pace <= MAX_PACE_SEC_PER_MILE) {
+                averagePace = pace;
+              }
             }
           }
 
