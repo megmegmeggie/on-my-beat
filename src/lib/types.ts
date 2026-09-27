@@ -29,6 +29,15 @@ export type Track = { title: string; file: any; bpm: number; id?: string; artist
 /** Where the runner is in a plan, zero-based: `{ week: 0, day: 1 }` is "Week 1, Day 2". */
 export type PlanPosition = { week: number; day: number };
 
+/** A stretch of a run (up to 10 s, never across segments): its target and the mean cadence over it. */
+export type CadenceSample = {
+  /** Seconds of running (excluding pauses) when the stretch started. */
+  atSec: number;
+  targetCadence: number;
+  /** Null when there was no cadence reading during the stretch. */
+  cadence: number | null;
+};
+
 /** A finished (or ended-early) run, saved to history. */
 export type RunRecord = {
   id: string;
@@ -47,4 +56,6 @@ export type RunRecord = {
   distanceMiles?: number;
   /** Average pace in seconds per mile (from GPS), or null if not enough data. */
   averagePaceSecPerMile?: number;
+  /** Target and actual cadence over the run, in order. Absent on runs saved before it was recorded. */
+  cadenceTrace?: CadenceSample[];
 };

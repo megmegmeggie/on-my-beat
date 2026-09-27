@@ -79,6 +79,10 @@ export const BrandColors = {
     cardSubtext: '#4A5D50',
     radio: '#7C9484',
     error: '#B3261E',
+    // Chart marks, validated for colorblind separation on `card` (see src/components/cadence-chart.tsx).
+    chartYou: '#1F6B3A',
+    chartTarget: '#A07A10',
+    chartGrid: '#D5E4D8',
   },
   dark: {
     heading: '#6FCF8F',
@@ -93,5 +97,8 @@ export const BrandColors = {
     cardSubtext: '#A9B8AE',
     radio: '#6B8373',
     error: '#F2B8B5',
+    chartYou: '#3AA862',
+    chartTarget: '#B38218',
+    chartGrid: '#27392D',
   },
 } as const;

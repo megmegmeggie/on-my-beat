@@ -18,6 +18,7 @@ import {
   averageCadence,
   type CadenceFeedback,
   cadenceFeedback,
+  cadenceTrace,
   type RunSessionState,
   useRunSession,
 } from '@/lib/run-session';
@@ -102,6 +103,7 @@ export default function WorkoutScreen() {
       completed: state.completed,
       distanceMiles: gpsDataRef.current?.distanceMiles ?? undefined,
       averagePaceSecPerMile: gpsDataRef.current?.averagePaceSecPerMile ?? undefined,
+      cadenceTrace: cadenceTrace(state),
     });
     // Replace, so Back from the summary doesn't return to a finished run.
     router.replace({ pathname: '/summary/[id]', params: { id: recordId } });
