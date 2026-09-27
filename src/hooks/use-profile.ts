@@ -89,17 +89,24 @@ const INCHES_PER_FOOT = 12;
 export const MIN_HEIGHT_CM = 90;
 export const MAX_HEIGHT_CM = 250;
 
-// Running stride estimate. "Stride" means one step (foot strike to the opposite
-// foot strike), as running watches use the term. Step length = speed ÷ cadence,
-// with cadence estimated from published trends: roughly +6 steps/min per extra
-// 1 m/s of speed, and −4 steps/min per extra 5 cm of leg length (leg ≈ 0.53 ×
-// height). It is a starting guess; measured cadence and speed will be better.
 export const PACE_SECONDS_PER_MILE: Record<Pace, number> = {
   easy: 10 * 60,
   moderate: 7 * 60 + 30,
   fast: 5 * 60 + 30,
 };
 export const DEFAULT_PACE: Pace = 'moderate';
+
+// Running stride estimate shown on the Profile page. "Stride" means one step
+// (foot strike to the opposite foot strike), as running watches use the term.
+// It follows the usual rule of thumb that a recreational runner's step is about
+// 0.55–0.75 × their height, longer the faster they run. (Deriving it from
+// speed ÷ cadence instead gives about 5 ft per step at a 5:30 mile, which is
+// right for fast runners but reads as wrong to most people.)
+const STRIDE_TO_HEIGHT: Record<Pace, number> = {
+  easy: 0.55,
+  moderate: 0.65,
+  fast: 0.75,
+};
 
 const METERS_PER_MILE = 1609.344;
 const BASE_CADENCE_SPM = 168; // Typical recreational cadence at 3 m/s for a 170 cm runner.
@@ -127,9 +134,7 @@ export function estimateCadenceSpm(heightCm: number, speedMps: number) {
 }
 
 export function estimateStrideLengthCm(heightCm: number, pace: Pace | null) {
-  const speedMps = paceToSpeedMps(pace);
-  const stepsPerSecond = estimateCadenceSpm(heightCm, speedMps) / 60;
-  return (speedMps / stepsPerSecond) * 100;
+  return heightCm * STRIDE_TO_HEIGHT[pace ?? DEFAULT_PACE];
 }
 
 export function formatPace(pace: Pace, unit: HeightUnit) {
