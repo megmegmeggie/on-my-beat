@@ -16,6 +16,11 @@ import {
   type Gender,
   type HeightUnit,
   isValidHeightCm,
+  isValidWeightKg,
+  kgToPounds,
+  MAX_WEIGHT_KG,
+  MIN_WEIGHT_KG,
+  poundsToKg,
   type Pace,
   type Profile,
   useProfile,
@@ -49,6 +54,11 @@ function heightDrafts(heightCm: number | null) {
   }
   const { feet, inches } = cmToFeetAndInches(heightCm);
   return { feet: String(feet), inches: String(inches), cm: String(Math.round(heightCm)) };
+}
+
+/** Weight as typed text: whole pounds or kilograms, matching the chosen units. */
+function weightDraft(weightKg: number | null, imperial: boolean) {
+  return weightKg === null ? '' : String(Math.round(imperial ? kgToPounds(weightKg) : weightKg));
 }
 
 export default function ProfileScreen() {
@@ -95,9 +105,23 @@ function ProfileForm({
     updateProfile({ heightCm: heightCm !== null && isValidHeightCm(heightCm) ? heightCm : null });
   }
 
+  // Weight works the same way: keep the typed text, save only a valid weight.
+  const [weightText, setWeightText] = useState(() => weightDraft(profile.weightKg, isImperial));
+  const [weightTouched, setWeightTouched] = useState(false);
+  const showWeightError = weightTouched && weightText !== '' && profile.weightKg === null;
+
+  function updateWeight(text: string) {
+    setWeightText(text);
+    const typed = Number(text);
+    const weightKg = text === '' ? null : isImperial ? poundsToKg(typed) : typed;
+    updateProfile({ weightKg: weightKg !== null && isValidWeightKg(weightKg) ? weightKg : null });
+  }
+
   function changeUnit(heightUnit: HeightUnit) {
     setDrafts(heightDrafts(profile.heightCm));
     setHeightTouched(false);
+    setWeightText(weightDraft(profile.weightKg, heightUnit === 'imperial'));
+    setWeightTouched(false);
     updateProfile({ heightUnit });
   }
 
@@ -109,7 +133,7 @@ function ProfileForm({
         Profile
       </ThemedText>
       <ThemedText style={{ color: colors.cardSubtext }}>
-        Tell us a little about yourself so we can estimate your running stride.
+        Tell us a little about yourself so we can estimate your running stride and the calories you burn.
       </ThemedText>
 
       <View style={styles.field}>
@@ -207,6 +231,35 @@ function ProfileForm({
         {showHeightError && (
           <ThemedText type="small" style={{ color: colors.error }}>
             {isImperial ? 'Enter a height between 3 ft and 8 ft 2 in.' : 'Enter a height between 90 and 250 cm.'}
+          </ThemedText>
+        )}
+      </View>
+
+      <View style={styles.field}>
+        <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
+          Weight
+        </ThemedText>
+        <View style={styles.heightRow}>
+          <UnitInput
+            value={weightText}
+            onChangeText={(text) => updateWeight(onlyDigits(text))}
+            onBlur={() => setWeightTouched(true)}
+            unit={isImperial ? 'lb' : 'kg'}
+            maxLength={3}
+            accessibilityLabel={isImperial ? 'Weight, pounds' : 'Weight, kilograms'}
+            inputStyle={inputStyle}
+            colors={colors}
+          />
+        </View>
+        {showWeightError ? (
+          <ThemedText type="small" style={{ color: colors.error }}>
+            {isImperial
+              ? `Enter a weight between ${Math.ceil(kgToPounds(MIN_WEIGHT_KG))} and ${Math.floor(kgToPounds(MAX_WEIGHT_KG))} lb.`
+              : `Enter a weight between ${MIN_WEIGHT_KG} and ${MAX_WEIGHT_KG} kg.`}
+          </ThemedText>
+        ) : (
+          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+            Used to estimate calories burned on your runs.
           </ThemedText>
         )}
       </View>

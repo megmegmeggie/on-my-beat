@@ -15,6 +15,8 @@ export type Profile = {
   /** Always stored in centimeters; `heightUnit` only controls how it is entered and shown. */
   heightCm: number | null;
   heightUnit: HeightUnit;
+  /** Always stored in kilograms; shown in lb or kg to match `heightUnit`. Used for calories. */
+  weightKg: number | null;
   /** Typical running pace; null means the user skipped it and `DEFAULT_PACE` is assumed. */
   pace: Pace | null;
   /** Speak cadence cues ("faster", "slower", "on pace") while a run is going. */
@@ -30,6 +32,7 @@ export const EMPTY_PROFILE: Profile = {
   gender: null,
   heightCm: null,
   heightUnit: 'imperial',
+  weightKg: null,
   pace: null,
   voiceCues: true,
   voice: 'current',
@@ -46,6 +49,7 @@ function parseProfile(stored: string | null): Profile {
       gender: GENDERS.includes(data.gender) ? data.gender : null,
       heightCm: typeof data.heightCm === 'number' ? data.heightCm : null,
       heightUnit: data.heightUnit === 'metric' ? 'metric' : 'imperial',
+      weightKg: typeof data.weightKg === 'number' ? data.weightKg : null,
       pace: PACES.includes(data.pace) ? data.pace : null,
       // Absent on profiles saved before cues existed, so default them on.
       voiceCues: typeof data.voiceCues === 'boolean' ? data.voiceCues : true,
@@ -88,6 +92,9 @@ const INCHES_PER_FOOT = 12;
 
 export const MIN_HEIGHT_CM = 90;
 export const MAX_HEIGHT_CM = 250;
+export const MIN_WEIGHT_KG = 25;
+export const MAX_WEIGHT_KG = 300;
+const LB_PER_KG = 2.20462;
 
 export const PACE_SECONDS_PER_MILE: Record<Pace, number> = {
   easy: 10 * 60,
@@ -147,6 +154,13 @@ export function formatPace(pace: Pace, unit: HeightUnit) {
 export function isValidHeightCm(heightCm: number) {
   return heightCm >= MIN_HEIGHT_CM && heightCm <= MAX_HEIGHT_CM;
 }
+
+export function isValidWeightKg(weightKg: number) {
+  return weightKg >= MIN_WEIGHT_KG && weightKg <= MAX_WEIGHT_KG;
+}
+
+export const poundsToKg = (pounds: number) => pounds / LB_PER_KG;
+export const kgToPounds = (kg: number) => kg * LB_PER_KG;
 
 export function feetAndInchesToCm(feet: number, inches: number) {
   return (feet * INCHES_PER_FOOT + inches) * CM_PER_INCH;
