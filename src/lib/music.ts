@@ -89,11 +89,18 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
     player?.pause();
     return;
   }
+  // Set on every new track, since the Music tab's player can change the shared session in between.
+  void setAudioModeAsync({
+    // Runners often have the ringer off, so play even in silent mode.
+    playsInSilentMode: true,
+    // Keep playing when the screen locks. On iOS the playing audio is also what keeps the
+    // app running in the background, so the run clock, voice cues and cadence carry on.
+    shouldPlayInBackground: true,
+    interruptionMode: 'duckOthers',
+  });
   if (player) {
     player.replace(track.file);
   } else {
-    // Runners often have the ringer off, so play even in silent mode.
-    void setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'duckOthers' });
     player = createAudioPlayer(track.file);
     player.addListener('playbackStatusUpdate', (status) => {
       if (status.didJustFinish && !status.loop) {
@@ -103,6 +110,9 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
   }
   player.loop = loop;
   player.play();
+  // Shows the song on the lock screen. Android also needs this, or it stops
+  // background audio after about three minutes.
+  player.setActiveForLockScreen(true, { title: track.title, artist: track.artist });
   runMusicListeners.forEach((listener) => listener());
 }
 
@@ -122,6 +132,8 @@ export function duckMusic(ducked: boolean) {
 }
 
 export function stopMusic() {
+  // Clear the lock screen before releasing the player; afterwards it would throw.
+  player?.clearLockScreenControls();
   player?.remove();
   player = null;
   playing = null;

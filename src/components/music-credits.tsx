@@ -2,7 +2,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { BrandColors, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getSongs } from '@/services/music/musicService';
 
 const LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/';
@@ -13,21 +14,24 @@ const LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/';
  * (incompetech.com), Licensed under Creative Commons: By Attribution 4.0.
  */
 export function MusicCredits() {
+  const colors = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   return (
-    <View style={styles.container} accessibilityLabel="Music credits">
-      <ThemedText type="smallBold" themeColor="textSecondary">
+    <View style={[styles.container, { backgroundColor: colors.card }]} accessibilityLabel="Music credits">
+      <ThemedText type="smallBold" style={[styles.label, { color: colors.goldText }]}>
         Music credits
       </ThemedText>
       {getSongs().map((song) => (
-        <ThemedText key={song.id} type="small" themeColor="textSecondary">
+        <ThemedText key={song.id} type="small" style={{ color: colors.cardSubtext }}>
           “{song.title}” {song.artist} (incompetech.com)
         </ThemedText>
       ))}
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" style={{ color: colors.cardSubtext }}>
         Licensed under Creative Commons: By Attribution 4.0
       </ThemedText>
       <ExternalLink href={LICENSE_URL}>
-        <ThemedText type="linkPrimary">{LICENSE_URL}</ThemedText>
+        <ThemedText type="smallBold" style={{ color: colors.heading }}>
+          {LICENSE_URL}
+        </ThemedText>
       </ExternalLink>
     </View>
   );
@@ -36,5 +40,12 @@ export function MusicCredits() {
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.one,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  label: {
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: Spacing.one,
   },
 });
