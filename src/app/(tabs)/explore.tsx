@@ -3,6 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AudioPlayer } from '@/components/audio-player';
+import { MusicCredits } from '@/components/music-credits';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
@@ -114,6 +115,8 @@ export default function MusicScreen() {
           })}
         </ThemedView>
 
+        <MusicCredits />
+
         {Platform.OS === 'web' && <WebBadge />}
       </ThemedView>
     </ScrollView>
@@ -131,6 +134,8 @@ const styles = StyleSheet.create({
   container: {
     maxWidth: MaxContentWidth,
     flexGrow: 1,
+    // Shrink to the screen width so long lines wrap instead of running off the side.
+    flexShrink: 1,
     gap: Spacing.five,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.six,
