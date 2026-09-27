@@ -1,4 +1,4 @@
-import { type AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { type AudioPlayer, createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync } from 'expo-audio';
 import { useEffect, useState } from 'react';
 
 import { getFavoriteSongIds } from '@/lib/favorites';
@@ -89,6 +89,8 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
     player?.pause();
     return;
   }
+  // Stop the Music tab's player first, so the run's song doesn't start over it.
+  runMusicListeners.forEach((listener) => listener());
   // Set on every new track, since the Music tab's player can change the shared session in between.
   void setAudioModeAsync({
     // Runners often have the ringer off, so play even in silent mode.
@@ -101,7 +103,10 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
   if (player) {
     player.replace(track.file);
   } else {
-    player = createAudioPlayer(track.file);
+    // On iOS a player that pauses or finishes switches the audio session off unless something
+    // is audibly playing, and the next song is usually still loading at that moment, so it would
+    // start into a dead session and stay silent. Keep the session on; `stopMusic` turns it off.
+    player = createAudioPlayer(track.file, { keepAudioSessionActive: true });
     player.addListener('playbackStatusUpdate', (status) => {
       if (status.didJustFinish && !status.loop) {
         finishHandler?.();
@@ -113,7 +118,6 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
   // Shows the song on the lock screen. Android also needs this, or it stops
   // background audio after about three minutes.
   player.setActiveForLockScreen(true, { title: track.title, artist: track.artist });
-  runMusicListeners.forEach((listener) => listener());
 }
 
 export function pauseMusic() {
@@ -135,6 +139,10 @@ export function stopMusic() {
   // Clear the lock screen before releasing the player; afterwards it would throw.
   player?.clearLockScreenControls();
   player?.remove();
+  if (player) {
+    // The run player keeps the session on while it's going; release it so other apps' audio can resume.
+    setIsAudioActiveAsync(false).catch(() => {});
+  }
   player = null;
   playing = null;
   finishHandler = null;
