@@ -18,21 +18,21 @@ const GRAVITY_TIME_CONSTANT_S = 1;
 /** Time constant for smoothing (≈ 5 Hz cutoff); running steps are ~2.5–3.5 Hz. */
 const SMOOTHING_TIME_CONSTANT_S = 0.03;
 /** Ignore bumps smaller than this, in g. Walking peaks are ~0.2–0.5 g, running 1–3 g. */
-const MIN_PEAK_G = 0.15;
+const MIN_PEAK_G = 0.3;
 /** A peak must reach this fraction of recent peak heights to count as a step. */
-const ADAPTIVE_THRESHOLD_RATIO = 0.4;
+const ADAPTIVE_THRESHOLD_RATIO = 0.6;
 /** How quickly the typical peak height adapts to a new pace or phone position. */
-const PEAK_AVERAGE_WEIGHT = 0.2;
+const PEAK_AVERAGE_WEIGHT = 0.15;
 /** The typical peak height fades over this time, so the threshold drops again after slowing down. */
-const PEAK_DECAY_TIME_S = 3;
-/** 0.25 s between steps = 240 steps/min, faster than a sprinter's cadence. */
-const MIN_STEP_INTERVAL_S = 0.25;
+const PEAK_DECAY_TIME_S = 1.5;
+/** 0.3 s between steps = 200 steps/min, faster than most runners' cadence. */
+const MIN_STEP_INTERVAL_S = 0.3;
 /** Cadence is measured over this many seconds of recent steps. */
-const CADENCE_WINDOW_S = 8;
+const CADENCE_WINDOW_S = 4;
 /** Steps needed in the window before reporting a cadence. */
-const MIN_STEPS_FOR_CADENCE = 4;
+const MIN_STEPS_FOR_CADENCE = 3;
 /** With no step for this long the runner has stopped, so cadence is null. */
-const STOPPED_AFTER_S = 2;
+const STOPPED_AFTER_S = 1.5;
 /** Fallback sample gap when timestamps are missing or out of order. */
 const DEFAULT_SAMPLE_INTERVAL_S = 0.02;
 
