@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CadenceChart } from '@/components/cadence-chart';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -103,6 +104,10 @@ export default function SummaryScreen() {
                   {formatDuration(record.timeOnTargetSec)} of {formatDuration(record.durationSec)}
                 </ThemedText>
               </View>
+
+              {record.cadenceTrace && record.cadenceTrace.length > 0 && (
+                <CadenceChart samples={record.cadenceTrace} durationSec={record.durationSec} colors={colors} />
+              )}
             </>
           ) : (
             <ThemedText type="subtitle" style={{ color: colors.heading }}>

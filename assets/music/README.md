@@ -22,6 +22,7 @@ The license requires crediting each track; the Music tab shows the credits
 3. Only use music whose license allows it in the app, and add any required credits.
 
 - `bpm` must be the song's real tempo. During a run, the song closest to the
-  current segment's target cadence (155–180 steps/min in `src/lib/workouts.ts`) plays.
+  current segment's target cadence (155–180 steps/min running, 115 walking; see
+  `CADENCE` in `src/lib/workouts.ts`) plays.
 - Half-time songs count: an 85 BPM song matches 170 steps/min.
 - Only `require` files that exist here, or the app won't build.
