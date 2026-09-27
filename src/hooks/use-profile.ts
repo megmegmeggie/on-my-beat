@@ -37,7 +37,7 @@ export const EMPTY_PROFILE: Profile = {
   weightKg: null,
   pace: null,
   voiceCues: true,
-  voice: 'current',
+  voice: 'standard',
   vibration: true,
 };
 
@@ -56,7 +56,9 @@ function parseProfile(stored: string | null): Profile {
       pace: PACES.includes(data.pace) ? data.pace : null,
       // Absent on profiles saved before cues existed, so default them on.
       voiceCues: typeof data.voiceCues === 'boolean' ? data.voiceCues : true,
-      voice: VOICE_IDS.includes(data.voice) ? data.voice : 'current',
+      // Anything unrecognized (including the old `current` id) falls back to
+      // the default voice, which is what `current` already meant.
+      voice: VOICE_IDS.includes(data.voice) ? data.voice : 'standard',
       // Absent on profiles saved before vibration existed, so default it on.
       vibration: typeof data.vibration === 'boolean' ? data.vibration : true,
     };

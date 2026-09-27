@@ -163,7 +163,7 @@ function RunView({
 
   // Spoken cues report the same feedback as the banner, but only while the run
   // is actually going, so a paused screen stays quiet.
-  useVoiceCues(feedback, (profile?.voiceCues ?? true) && state.status === 'running', profile?.voice ?? 'current');
+  useVoiceCues(feedback, (profile?.voiceCues ?? true) && state.status === 'running', profile?.voice ?? 'standard');
   useSegmentVibration(state, segment.targetCadence, profile?.vibration ?? true);
 
   const startedAt = useRef<Date | null>(null);

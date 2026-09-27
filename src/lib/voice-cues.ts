@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { duckMusic } from '@/lib/music';
 import type { CadenceFeedback } from '@/lib/run-session';
 
-export const VOICE_IDS = ['current', 'soft', 'sergeant'] as const;
+export const VOICE_IDS = ['standard', 'soft', 'sergeant'] as const;
 export type Voice = (typeof VOICE_IDS)[number];
 
 /**
@@ -20,7 +20,7 @@ export const FEEDBACK_PHRASE: Record<CadenceFeedback, string | null> = {
 };
 
 export const VOICE_LABELS: Record<Voice, string> = {
-  current: 'Current',
+  standard: 'Standard',
   soft: 'Soft',
   sergeant: 'Drill sergeant',
 };
@@ -31,10 +31,10 @@ export const VOICE_OPTIONS = VOICE_IDS.map((value) => ({ value, label: VOICE_LAB
  * Each voice is a tuning of the system voice rather than a named one, because
  * which voices a device has installed varies too much to pick a "soft" or a
  * "rough" one reliably. Pitch and rate are the only knobs that behave the same
- * everywhere; `current` is the tuning cues shipped with.
+ * everywhere; `standard` is the tuning cues shipped with.
  */
 const VOICE_TUNING: Record<Voice, Speech.SpeechOptions> = {
-  current: { rate: 1.15 },
+  standard: { rate: 1.15 },
   soft: { rate: 1.05, pitch: 1.4 },
   sergeant: { rate: 1.4, pitch: 0.65 },
 };
