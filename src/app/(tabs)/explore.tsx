@@ -3,16 +3,19 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AudioPlayer } from '@/components/audio-player';
+import { FavoriteButton } from '@/components/favorite-button';
 import { MusicCredits } from '@/components/music-credits';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { getSongs } from '@/services/music/musicService';
 
 export default function MusicScreen() {
   const theme = useTheme();
+  const brand = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   const safeAreaInsets = useSafeAreaInsets();
   const tracks = getSongs();
 
@@ -62,7 +65,8 @@ export default function MusicScreen() {
         <ThemedView style={styles.titleContainer}>
           <ThemedText type="subtitle">Music</ThemedText>
           <ThemedText themeColor="textSecondary">
-            Browse the song library. During a run, songs are picked automatically to match your target cadence.
+            Browse the song library. During a run, songs are picked automatically to match your target cadence, and
+            your favourites play first.
           </ThemedText>
         </ThemedView>
 
@@ -110,6 +114,12 @@ export default function MusicScreen() {
                     Playing
                   </ThemedText>
                 ) : null}
+                <FavoriteButton
+                  songId={song.id}
+                  title={song.title}
+                  color={theme.textSecondary}
+                  activeColor={brand.gold}
+                />
               </Pressable>
             );
           })}

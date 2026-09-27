@@ -46,7 +46,8 @@
           "locationWhenInUsePermission": "Allow On My Beat to use your location to track distance and pace during runs."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,8 +1,12 @@
 import { type AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { useEffect, useState } from 'react';
 
+import { getFavoriteSongIds } from '@/lib/favorites';
 import { TRACKS } from '@/lib/tracks';
 import type { Track } from '@/lib/types';
+
+// Start loading the favourites now, so they're ready by the time a run picks its first song.
+void getFavoriteSongIds();
 
 export type TrackPick = {
   track: Track;
@@ -143,12 +147,22 @@ function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
-/** A fresh queue for `targetCadence`, with the matches shuffled so each run sounds different. */
+/**
+ * A fresh queue for `targetCadence`, with the matches shuffled so each run
+ * sounds different: favourite songs first, then the rest.
+ */
 function buildQueue(targetCadence: number, tracks: Track[] = TRACKS): Queue {
   const ranked = rankTracks(targetCadence, tracks);
   const inTolerance = ranked.filter((pick) => Math.abs(pick.matchedBpm - targetCadence) <= BPM_TOLERANCE).length;
   // `ranked` is sorted by closeness, so the matches are its first `inTolerance` picks.
-  const picks = [...shuffle(ranked.slice(0, inTolerance)), ...ranked.slice(inTolerance)];
+  const matches = ranked.slice(0, inTolerance);
+  const favorites = getFavoriteSongIds();
+  const isFavorite = (pick: TrackPick) => pick.track.id !== undefined && favorites.has(pick.track.id);
+  const picks = [
+    ...shuffle(matches.filter(isFavorite)),
+    ...shuffle(matches.filter((pick) => !isFavorite(pick))),
+    ...ranked.slice(inTolerance),
+  ];
   return { targetCadence, picks, matches: Math.min(Math.max(inTolerance, 1), picks.length), index: 0 };
 }
 

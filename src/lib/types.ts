@@ -38,6 +38,9 @@ export type CadenceSample = {
   cadence: number | null;
 };
 
+/** A GPS position on a run's route, as [latitude, longitude] in degrees. */
+export type RoutePoint = [latitude: number, longitude: number];
+
 /** A finished (or ended-early) run, saved to history. */
 export type RunRecord = {
   id: string;
@@ -58,4 +61,6 @@ export type RunRecord = {
   averagePaceSecPerMile?: number;
   /** Target and actual cadence over the run, in order. Absent on runs saved before it was recorded. */
   cadenceTrace?: CadenceSample[];
+  /** The GPS route, in order. Absent when GPS was unavailable or on runs saved before routes were recorded. */
+  route?: RoutePoint[];
 };

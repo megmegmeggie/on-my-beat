@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+
+import type { RoutePoint } from '@/lib/types';
 
 const METERS_PER_MILE = 1609.344;
 
@@ -9,6 +11,10 @@ const MIN_DISTANCE_METERS = 2;
 const MIN_TIME_INTERVAL_MS = 1000;
 /** Accuracy threshold (meters) — readings worse than this are discarded. */
 const MAX_ACCURACY_METERS = 50;
+/** Route points closer together than this (meters) are skipped, to keep saved routes small. */
+const ROUTE_POINT_SPACING_METERS = 10;
+/** Route coordinates are rounded to this many decimals (about 1 m). */
+const ROUTE_DECIMALS = 5;
 /** Maximum realistic pace in seconds per mile (20:00/mi). Slower than this is treated as not moving. */
 const MAX_PACE_SEC_PER_MILE = 1200;
 
@@ -83,6 +89,8 @@ export function useGpsTracking(active: boolean) {
   const totalDistanceMetersRef = useRef(0);
   const startTimeRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number | null>(null);
+  /** Where the runner went, for the map on the summary. Appended to in place. */
+  const routeRef = useRef<RoutePoint[]>([]);
 
   useEffect(() => {
     if (!active) {
@@ -179,6 +187,15 @@ export function useGpsTracking(active: boolean) {
             }
           }
 
+          const route = routeRef.current;
+          const lastPoint = route.at(-1);
+          if (
+            !lastPoint ||
+            haversineDistanceMeters(lastPoint[0], lastPoint[1], latitude, longitude) >= ROUTE_POINT_SPACING_METERS
+          ) {
+            route.push([roundCoordinate(latitude), roundCoordinate(longitude)]);
+          }
+
           lastLocationRef.current = location;
           lastUpdateTimeRef.current = now;
 
@@ -227,8 +244,17 @@ export function useGpsTracking(active: boolean) {
     totalDistanceMetersRef.current = 0;
     startTimeRef.current = null;
     lastUpdateTimeRef.current = null;
+    routeRef.current = [];
     setState(INITIAL_GPS_STATE);
   }
 
-  return { ...state, stop, reset };
+  /** The route so far. The same array grows as the run goes, so read it when it's needed (e.g. on save). */
+  const getRoute = useCallback(() => routeRef.current, []);
+
+  return { ...state, getRoute, stop, reset };
+}
+
+function roundCoordinate(degrees: number) {
+  const factor = 10 ** ROUTE_DECIMALS;
+  return Math.round(degrees * factor) / factor;
 }

@@ -1,9 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CadenceChart } from '@/components/cadence-chart';
+import { RouteMap } from '@/components/route-map';
+import { ShareSheet } from '@/components/share-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -21,7 +23,10 @@ type Colors = (typeof BrandColors)['light' | 'dark'];
 const RECENT_RUNS = 5;
 
 export default function SummaryScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `from` is "history" when a past run was opened from the History tab rather than just finished.
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  const fromHistory = from === 'history';
+  const [sharing, setSharing] = useState(false);
   const scheme = useColorScheme();
   const colors = BrandColors[scheme === 'dark' ? 'dark' : 'light'];
   const [history, setHistory] = useState<RunRecord[] | undefined>(undefined);
@@ -51,7 +56,7 @@ export default function SummaryScreen() {
             <>
               <View style={styles.header}>
                 <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
-                  Nice run!
+                  {fromHistory ? 'Run recap' : 'Nice run!'}
                 </ThemedText>
                 <ThemedText style={{ color: colors.cardSubtext }}>
                   {record.workoutName} · {formatDate(record.startedAt)}
@@ -108,6 +113,10 @@ export default function SummaryScreen() {
               {record.cadenceTrace && record.cadenceTrace.length > 0 && (
                 <CadenceChart samples={record.cadenceTrace} durationSec={record.durationSec} colors={colors} />
               )}
+
+              {record.route && record.route.length > 1 && <RouteMap route={record.route} colors={colors} />}
+
+              <ShareSheet record={record} visible={sharing} onClose={() => setSharing(false)} />
             </>
           ) : (
             <ThemedText type="subtitle" style={{ color: colors.heading }}>
@@ -115,22 +124,48 @@ export default function SummaryScreen() {
             </ThemedText>
           )}
 
-          <Pressable
-            onPress={() => router.replace('/')}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.doneButton, { backgroundColor: colors.banner }, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={{ color: colors.bannerText }}>
-              Done
-            </ThemedText>
-          </Pressable>
+          <View style={styles.actions}>
+            {/* Sharing needs a local image file, which the web build can't hand to other apps. */}
+            {record && Platform.OS !== 'web' && (
+              <Pressable
+                onPress={() => setSharing(true)}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.shareButton,
+                  { borderColor: colors.banner },
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText type="smallBold" style={{ color: colors.heading }}>
+                  Share
+                </ThemedText>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => (fromHistory && router.canGoBack() ? router.back() : router.replace('/'))}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: colors.banner },
+                pressed && styles.pressed,
+              ]}>
+              <ThemedText type="smallBold" style={{ color: colors.bannerText }}>
+                {fromHistory ? 'Back' : 'Done'}
+              </ThemedText>
+            </Pressable>
+          </View>
 
-          {earlierRuns.length > 0 && (
+          {!fromHistory && earlierRuns.length > 0 && (
             <View style={styles.history}>
               <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
                 Recent runs
               </ThemedText>
               {earlierRuns.map((run) => (
-                <View key={run.id} style={[styles.historyRow, { backgroundColor: colors.card }]}>
+                <Pressable
+                  key={run.id}
+                  onPress={() => router.push({ pathname: '/summary/[id]', params: { id: run.id, from: 'history' } })}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.historyRow, { backgroundColor: colors.card }, pressed && styles.pressed]}>
                   <View style={styles.historyInfo}>
                     <ThemedText type="smallBold" numberOfLines={1} style={{ color: colors.cardText }}>
                       {run.workoutName}
@@ -154,7 +189,7 @@ export default function SummaryScreen() {
                       </ThemedText>
                     )}
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           )}
@@ -257,10 +292,18 @@ const styles = StyleSheet.create({
   onTargetHeader: {
     gap: Spacing.half,
   },
-  doneButton: {
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  actionButton: {
+    flex: 1,
     alignItems: 'center',
     paddingVertical: Spacing.three,
     borderRadius: 999,
+  },
+  shareButton: {
+    borderWidth: 1,
   },
   history: {
     gap: Spacing.two,
