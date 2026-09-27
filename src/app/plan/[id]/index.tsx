@@ -3,14 +3,13 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PLAN_IDS, type PlanId, useSelectedPlan } from '@/hooks/use-selected-plan';
 import { formatPlanPosition, getPlanPosition, resetPlanPosition } from '@/lib/storage';
-import type { PlanEvidence, PlanPosition, Workout } from '@/lib/types';
+import type { PlanPosition, Workout } from '@/lib/types';
 import { PLANS, workoutDurationSec } from '@/lib/workouts';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
@@ -146,65 +145,25 @@ function PlanView({ planId, colors }: { planId: PlanId; colors: Colors }) {
         </ThemedText>
       </Pressable>
 
-      <EvidenceSection evidence={plan.evidence} colors={colors} />
+      <MoreInfoLink planId={planId} planName={plan.name} colors={colors} />
     </ScrollView>
   );
 }
 
-function EvidenceSection({ evidence, colors }: { evidence: PlanEvidence; colors: Colors }) {
+function MoreInfoLink({ planId, planName, colors }: { planId: PlanId; planName: string; colors: Colors }) {
   return (
-    <View style={styles.evidence}>
-      <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
-        What this plan is based on
+    <Pressable
+      onPress={() => router.push({ pathname: '/plan/[id]/evidence', params: { id: planId } })}
+      accessibilityRole="link"
+      accessibilityLabel={`More information about the ${planName} plan`}
+      style={({ pressed }) => [styles.moreInfo, pressed && styles.pressed]}>
+      <ThemedText type="small" style={[styles.moreInfoLabel, { color: colors.goldText }]}>
+        More information
       </ThemedText>
-      <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-        {evidence.basis}
+      <ThemedText type="subtitle" style={{ color: colors.radio }}>
+        ›
       </ThemedText>
-
-      {evidence.approaches.map((approach) => (
-        <View key={approach.name} style={[styles.approach, { backgroundColor: colors.card }]}>
-          <ThemedText type="smallBold" style={{ color: colors.cardText }}>
-            {approach.name}
-          </ThemedText>
-          <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-            {approach.summary}
-          </ThemedText>
-        </View>
-      ))}
-
-      {evidence.caveat && (
-        <View style={[styles.caveat, { backgroundColor: colors.banner }]}>
-          <ThemedText type="smallBold" style={{ color: colors.bannerLabel }}>
-            Worth knowing
-          </ThemedText>
-          <ThemedText type="small" style={{ color: colors.bannerText }}>
-            {evidence.caveat}
-          </ThemedText>
-        </View>
-      )}
-
-      <ThemedText type="smallBold" style={[styles.sectionLabel, styles.sourceLabel, { color: colors.goldText }]}>
-        Sources
-      </ThemedText>
-      {evidence.sources.map((source) => (
-        <View key={source.href} style={[styles.source, { backgroundColor: colors.card }]}>
-          <ExternalLink
-            href={source.href}
-            accessibilityLabel={`${source.label}. ${source.detail}`}
-            style={styles.sourceLink}>
-            <ThemedText type="smallBold" style={{ color: colors.cardText }}>
-              {source.label}
-            </ThemedText>
-            <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-              {source.detail}
-            </ThemedText>
-          </ExternalLink>
-          <ThemedText type="subtitle" style={{ color: colors.radio }}>
-            ›
-          </ThemedText>
-        </View>
-      ))}
-    </View>
+    </Pressable>
   );
 }
 
@@ -318,33 +277,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textDecorationLine: 'underline',
   },
-  evidence: {
-    gap: Spacing.three,
-    paddingTop: Spacing.two,
-  },
-  approach: {
-    gap: Spacing.one,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  caveat: {
-    gap: Spacing.one,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  sourceLabel: {
-    marginTop: Spacing.two,
-  },
-  source: {
+  moreInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  sourceLink: {
-    flex: 1,
+    justifyContent: 'center',
     gap: Spacing.half,
+  },
+  moreInfoLabel: {
     textDecorationLine: 'underline',
   },
   pressed: {
