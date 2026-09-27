@@ -12,6 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useProfile } from '@/hooks/use-profile';
 import { PLAN_IDS } from '@/hooks/use-selected-plan';
 import { useCadence } from '@/lib/cadence';
+import { formatPace, useGpsTracking } from '@/lib/gps';
 import { useSegmentMusic } from '@/lib/music';
 import {
   averageCadence,
@@ -74,6 +75,7 @@ export default function WorkoutScreen() {
   }, [builtIn, id]);
 
   const workout = builtIn ?? custom;
+  const gpsDataRef = useRef<{ distanceMiles: number; averagePaceSecPerMile: number | null } | null>(null);
 
   async function handleFinished(state: RunSessionState, startedAt: Date) {
     if (!workout) {
@@ -97,6 +99,8 @@ export default function WorkoutScreen() {
       averageCadence: averageCadence(state),
       timeOnTargetSec: Math.round(state.onTargetMs / 1000),
       completed: state.completed,
+      distanceMiles: gpsDataRef.current?.distanceMiles ?? undefined,
+      averagePaceSecPerMile: gpsDataRef.current?.averagePaceSecPerMile ?? undefined,
     });
     // Replace, so Back from the summary doesn't return to a finished run.
     router.replace({ pathname: '/summary/[id]', params: { id: recordId } });
@@ -106,7 +110,7 @@ export default function WorkoutScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {workout ? (
-          <RunView workout={workout} colors={colors} onFinished={handleFinished} />
+          <RunView workout={workout} colors={colors} onFinished={handleFinished} gpsDataRef={gpsDataRef} />
         ) : workout === undefined ? null : (
           <View style={styles.content}>
             <ThemedText type="subtitle" style={{ color: colors.heading }}>
@@ -124,10 +128,12 @@ function RunView({
   workout,
   colors,
   onFinished,
+  gpsDataRef,
 }: {
   workout: Workout;
   colors: Colors;
   onFinished: (state: RunSessionState, startedAt: Date) => void;
+  gpsDataRef: React.MutableRefObject<{ distanceMiles: number; averagePaceSecPerMile: number | null } | null>;
 }) {
   useKeepAwake();
   const cadence = useCadence();
@@ -138,6 +144,17 @@ function RunView({
   const run = useRunSession(workout, currentCadence);
   const { state, segment, nextSegment } = run;
   const { pick: music, nextSong } = useSegmentMusic(segment.targetCadence, state.status === 'running');
+  const gps = useGpsTracking(state.status === 'running');
+
+  // Keep the latest GPS data available to the parent for saving on finish.
+  useEffect(() => {
+    if (gps.status === 'tracking') {
+      gpsDataRef.current = {
+        distanceMiles: gps.distanceMiles,
+        averagePaceSecPerMile: gps.averagePaceSecPerMile,
+      };
+    }
+  }, [gps.status, gps.distanceMiles, gps.averagePaceSecPerMile, gpsDataRef]);
 
   const feedback = cadenceFeedback(currentCadence, segment.targetCadence);
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
@@ -165,6 +182,7 @@ function RunView({
 
   function end() {
     cadence.stop();
+    gps.stop();
     run.end();
   }
 
@@ -203,6 +221,20 @@ function RunView({
         <CadenceStat label={simulating ? 'Simulated' : 'Your cadence'} value={currentCadence} colors={colors} />
         <CadenceStat label="Target" value={segment.targetCadence} colors={colors} />
       </View>
+
+      {gps.status === 'tracking' && (
+        <View style={styles.gpsRow}>
+          <GpsStat label="Distance" value={`${gps.distanceMiles.toFixed(2)} mi`} colors={colors} />
+          <GpsStat label="Pace" value={formatPace(gps.currentPaceSecPerMile)} unit="/mi" colors={colors} />
+          <GpsStat label="Avg pace" value={formatPace(gps.averagePaceSecPerMile)} unit="/mi" colors={colors} />
+        </View>
+      )}
+
+      {gps.error && (
+        <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+          {gps.error}
+        </ThemedText>
+      )}
 
       {state.status !== 'ready' && (
         <View style={[styles.feedback, { backgroundColor: feedbackColor }]} accessibilityLiveRegion="polite">
@@ -298,6 +330,20 @@ function CadenceStat({ label, value, colors }: { label: string; value: number | 
   );
 }
 
+function GpsStat({ label, value, unit, colors }: { label: string; value: string; unit?: string; colors: Colors }) {
+  return (
+    <View style={[styles.gpsStat, { backgroundColor: colors.card }]}>
+      <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+        {label}
+      </ThemedText>
+      <ThemedText style={[styles.gpsStatValue, { color: colors.cardText }]}>
+        {value}
+        {unit ? ` ${unit}` : ''}
+      </ThemedText>
+    </View>
+  );
+}
+
 function ActionButton({
   label,
   onPress,
@@ -363,6 +409,22 @@ const styles = StyleSheet.create({
   cadenceRow: {
     flexDirection: 'row',
     gap: Spacing.three,
+  },
+  gpsRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  gpsStat: {
+    flex: 1,
+    alignItems: 'center',
+    padding: Spacing.three,
+    borderRadius: Spacing.four,
+  },
+  gpsStatValue: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: 700,
+    fontVariant: ['tabular-nums'],
   },
   stat: {
     flex: 1,

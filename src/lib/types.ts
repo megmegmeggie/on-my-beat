@@ -43,4 +43,8 @@ export type RunRecord = {
   timeOnTargetSec: number;
   /** False if the runner ended the workout before the last segment finished. */
   completed: boolean;
+  /** Distance covered in miles (from GPS tracking), or null if GPS was unavailable. */
+  distanceMiles?: number;
+  /** Average pace in seconds per mile (from GPS), or null if not enough data. */
+  averagePaceSecPerMile?: number;
 };

@@ -85,15 +85,10 @@ export function AudioPlayer({
     });
   }, [backgroundPlayback]);
 
-  useEffect(() => {
-    if (!backgroundPlayback) {
-      return;
-    }
-
-    return () => {
-      player.clearLockScreenControls();
-    };
-  }, [backgroundPlayback, player]);
+  // No cleanup that calls `player.clearLockScreenControls()` here: useAudioPlayer
+  // releases the player in its own unmount cleanup, which runs first, so calling
+  // it afterwards throws on iOS/Android (e.g. when switching songs). Releasing
+  // the player already removes it from the lock screen natively.
 
   useEffect(() => {
     if (!backgroundPlayback || !status.playing) {
