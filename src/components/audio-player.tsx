@@ -51,7 +51,9 @@ export function AudioPlayer({
   onTrackEnded,
 }: AudioPlayerProps) {
   const colors = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
-  const player = useAudioPlayer(source, { updateInterval: STATUS_UPDATE_INTERVAL });
+  // Pausing mustn't switch the iOS audio session off: that's what happens when a run starts, and
+  // the run's song, still loading at that moment, would then play into a dead session.
+  const player = useAudioPlayer(source, { updateInterval: STATUS_UPDATE_INTERVAL, keepAudioSessionActive: true });
   const status = useAudioPlayerStatus(player);
 
   const [isScrubbing, setIsScrubbing] = useState(false);
