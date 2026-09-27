@@ -1,8 +1,9 @@
 import Slider from '@react-native-community/slider';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FavoriteButton } from '@/components/favorite-button';
@@ -46,6 +47,12 @@ const FEEDBACK_TEXT: Record<CadenceFeedback, string> = {
 
 /** What the run view hands back for saving: GPS totals, and the route (appended to as the run goes). */
 type GpsData = { distanceMiles: number; averagePaceSecPerMile: number | null; route: RoutePoint[] };
+
+/**
+ * Expo Go on iPhone can't keep running in the background (the app's own builds
+ * can), so locking the phone there pauses the music, timer and tracking.
+ */
+const PAUSES_WHEN_LOCKED = Platform.OS === 'ios' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 function goBack() {
   if (router.canGoBack()) {
@@ -333,6 +340,12 @@ function RunView({
         )}
       </View>
       {state.status === 'ready' && <ActionButton label="Back" onPress={goBack} colors={colors} />}
+      {state.status === 'ready' && PAUSES_WHEN_LOCKED && (
+        <ThemedText type="small" style={{ color: colors.cardSubtext, textAlign: 'center' }}>
+          In Expo Go, locking your phone pauses the music and tracking. The screen stays on during a run, so leave it
+          unlocked.
+        </ThemedText>
+      )}
     </ScrollView>
   );
 }
