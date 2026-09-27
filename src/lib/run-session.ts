@@ -6,6 +6,12 @@ import type { CadenceSample, Segment, Workout } from '@/lib/types';
 export const ON_TARGET_TOLERANCE_SPM = 8;
 /** How often the timer advances while running. */
 const TICK_MS = 250;
+/**
+ * A gap between ticks longer than this means the app was paused by the system
+ * (e.g. while the phone was locked). The clock still counts it, but there was no
+ * cadence reading during it, so it doesn't count towards the average or on-target time.
+ */
+const MAX_TICK_GAP_MS = 2000;
 /** Running time covered by each sample of the cadence trace (a segment change also starts one). */
 const TRACE_SAMPLE_MS = 10_000;
 
@@ -160,7 +166,8 @@ export function useRunSession(workout: Workout, cadence: number | null) {
     let lastTick = Date.now();
     const timer = setInterval(() => {
       const now = Date.now();
-      dispatch({ type: 'tick', dtMs: now - lastTick, cadence: latestCadence.current });
+      const dtMs = now - lastTick;
+      dispatch({ type: 'tick', dtMs, cadence: dtMs > MAX_TICK_GAP_MS ? null : latestCadence.current });
       lastTick = now;
     }, TICK_MS);
     return () => clearInterval(timer);
