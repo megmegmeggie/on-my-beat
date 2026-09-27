@@ -23,6 +23,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="figure.run" md="directions_run" />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="history">
+        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="clock.arrow.circlepath" md="history" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="explore">
         <NativeTabs.Trigger.Label>Music</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="music.note" md="music_note" />

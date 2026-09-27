@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FavoriteButton } from '@/components/favorite-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -23,7 +24,7 @@ import {
   useRunSession,
 } from '@/lib/run-session';
 import { addRunRecord, completePlanWorkout, getCustomWorkout } from '@/lib/storage';
-import type { Workout } from '@/lib/types';
+import type { RoutePoint, Workout } from '@/lib/types';
 import { useSegmentVibration, useSpeedUpVibration } from '@/lib/vibration';
 import { useVoiceCues } from '@/lib/voice-cues';
 import { getBuiltInWorkout, PLANS } from '@/lib/workouts';
@@ -42,6 +43,9 @@ const FEEDBACK_TEXT: Record<CadenceFeedback, string> = {
   'slow-down': 'Slow down',
   'on-target': 'On target',
 };
+
+/** What the run view hands back for saving: GPS totals, and the route (appended to as the run goes). */
+type GpsData = { distanceMiles: number; averagePaceSecPerMile: number | null; route: RoutePoint[] };
 
 function goBack() {
   if (router.canGoBack()) {
@@ -77,7 +81,7 @@ export default function WorkoutScreen() {
   }, [builtIn, id]);
 
   const workout = builtIn ?? custom;
-  const gpsDataRef = useRef<{ distanceMiles: number; averagePaceSecPerMile: number | null } | null>(null);
+  const gpsDataRef = useRef<GpsData | null>(null);
 
   async function handleFinished(state: RunSessionState, startedAt: Date) {
     if (!workout) {
@@ -103,6 +107,8 @@ export default function WorkoutScreen() {
       completed: state.completed,
       distanceMiles: gpsDataRef.current?.distanceMiles ?? undefined,
       averagePaceSecPerMile: gpsDataRef.current?.averagePaceSecPerMile ?? undefined,
+      // A single point isn't a route.
+      route: (gpsDataRef.current?.route.length ?? 0) > 1 ? [...(gpsDataRef.current?.route ?? [])] : undefined,
       cadenceTrace: cadenceTrace(state),
     });
     // Replace, so Back from the summary doesn't return to a finished run.
@@ -136,7 +142,7 @@ function RunView({
   workout: Workout;
   colors: Colors;
   onFinished: (state: RunSessionState, startedAt: Date) => void;
-  gpsDataRef: React.MutableRefObject<{ distanceMiles: number; averagePaceSecPerMile: number | null } | null>;
+  gpsDataRef: React.MutableRefObject<GpsData | null>;
 }) {
   useKeepAwake();
   const cadence = useCadence();
@@ -150,14 +156,16 @@ function RunView({
   const gps = useGpsTracking(state.status === 'running');
 
   // Keep the latest GPS data available to the parent for saving on finish.
+  const getRoute = gps.getRoute;
   useEffect(() => {
     if (gps.status === 'tracking') {
       gpsDataRef.current = {
         distanceMiles: gps.distanceMiles,
         averagePaceSecPerMile: gps.averagePaceSecPerMile,
+        route: getRoute(),
       };
     }
-  }, [gps.status, gps.distanceMiles, gps.averagePaceSecPerMile, gpsDataRef]);
+  }, [gps.status, gps.distanceMiles, gps.averagePaceSecPerMile, getRoute, gpsDataRef]);
 
   const feedback = cadenceFeedback(currentCadence, segment.targetCadence);
   const feedbackColor = feedback === 'on-target' ? colors.banner : feedback === 'no-reading' ? colors.card : colors.gold;
@@ -288,6 +296,14 @@ function RunView({
               {music.track.bpm} BPM{music.halfTime ? ` · half-time, matches ${music.matchedBpm} spm` : ''}
             </ThemedText>
           </View>
+          {music.track.id && music.track.file ? (
+            <FavoriteButton
+              songId={music.track.id}
+              title={music.track.title}
+              color={colors.cardSubtext}
+              activeColor={colors.gold}
+            />
+          ) : null}
           <Pressable
             onPress={nextSong}
             accessibilityRole="button"
