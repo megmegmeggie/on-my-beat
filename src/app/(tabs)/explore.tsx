@@ -1,20 +1,43 @@
+import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AudioPlayer } from '@/components/audio-player';
 import { FavoriteButton } from '@/components/favorite-button';
-import { MusicCredits } from '@/components/music-credits';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getSongs } from '@/services/music/musicService';
+import type { Song } from '@/types/music';
+
+/** Songs slower than this are half-time: a runner steps twice per beat, e.g. 85 BPM fits 170 steps/min. */
+const HALF_TIME_BELOW_BPM = 100;
+
+/** The running cadence a song fits: its BPM, or double it for a half-time song. */
+function fitsCadence(song: Song) {
+  return song.bpm < HALF_TIME_BELOW_BPM ? song.bpm * 2 : song.bpm;
+}
+
+/** Matches the title, artist or style (e.g. "bouncy"), or a BPM or cadence starting with the digits typed. */
+function matchesSearch(song: Song, query: string) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const text = `${song.title} ${song.artist} ${song.genre ?? ''}`.toLowerCase();
+  return words.every((word) =>
+    /^\d+$/.test(word)
+      ? String(song.bpm).startsWith(word) || String(fitsCadence(song)).startsWith(word)
+      : text.includes(word)
+  );
+}
 
 export default function MusicScreen() {
   const colors = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   const tracks = getSongs();
+  const [query, setQuery] = useState('');
+  const shown = query.trim() ? tracks.filter((song) => matchesSearch(song, query)) : tracks;
 
   // `autoPlay` is false on first load so the app never starts making noise
   // unprompted, and true once the user has engaged with the player.
@@ -67,12 +90,37 @@ export default function MusicScreen() {
               Song library
             </ThemedText>
             <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-              {tracks.length} songs
+              {shown.length === tracks.length ? `${tracks.length} songs` : `${shown.length} of ${tracks.length}`}
             </ThemedText>
           </View>
 
+          <View style={[styles.search, { backgroundColor: colors.card }]}>
+            <SymbolView
+              name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
+              size={18}
+              tintColor={colors.cardSubtext}
+            />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search by name, style or BPM"
+              placeholderTextColor={colors.cardSubtext}
+              style={[styles.searchInput, { color: colors.cardText }]}
+              autoCorrect={false}
+              autoCapitalize="none"
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+              accessibilityLabel="Search songs"
+            />
+          </View>
+
           <View style={styles.list}>
-            {tracks.map((song) => {
+            {shown.length === 0 && (
+              <ThemedText type="small" style={[styles.noResults, { color: colors.cardSubtext }]}>
+                No songs match “{query.trim()}”.
+              </ThemedText>
+            )}
+            {shown.map((song) => {
               const isSelected = song.id === selectedSong?.id;
 
               return (
@@ -96,7 +144,7 @@ export default function MusicScreen() {
                     </ThemedText>
                     <ThemedText type="small" numberOfLines={1} style={{ color: colors.cardSubtext }}>
                       {isSelected ? 'Selected · ' : ''}
-                      {song.genre ?? song.artist}
+                      {fitsCadence(song) !== song.bpm ? `Half-time, fits ${fitsCadence(song)} spm` : song.genre ?? song.artist}
                     </ThemedText>
                   </View>
 
@@ -115,7 +163,17 @@ export default function MusicScreen() {
             })}
           </View>
 
-          <MusicCredits />
+          <Pressable
+            onPress={() => router.push('/music-credits')}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.creditsLink, pressed && styles.pressed]}>
+            <ThemedText type="small" style={[styles.creditsLabel, { color: colors.goldText }]}>
+              Music credits
+            </ThemedText>
+            <ThemedText type="subtitle" style={{ color: colors.radio }}>
+              ›
+            </ThemedText>
+          </Pressable>
 
           {Platform.OS === 'web' && <WebBadge />}
         </ScrollView>
@@ -157,6 +215,31 @@ const styles = StyleSheet.create({
   sectionLabel: {
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: Spacing.three,
+  },
+  noResults: {
+    textAlign: 'center',
+    paddingVertical: Spacing.three,
+  },
+  creditsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.half,
+  },
+  creditsLabel: {
+    textDecorationLine: 'underline',
   },
   list: {
     gap: Spacing.two,
