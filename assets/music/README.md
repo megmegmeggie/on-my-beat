@@ -8,8 +8,8 @@ and the run screen.
 All by Kevin MacLeod (incompetech.com), licensed under Creative Commons
 Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/). Downloaded from
 incompetech.com and re-encoded to 128 kbps. BPMs are from incompetech's catalogue.
-The license requires crediting each track; the Music tab shows the credits
-(`src/components/music-credits.tsx`), so keep that in place.
+The license requires crediting each track; the Music credits page shows them
+(`src/app/music-credits.tsx`, linked from the bottom of the Music tab), so keep that in place.
 
 ## Adding a song
 

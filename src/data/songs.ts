@@ -7,7 +7,7 @@ import type { Song } from '@/types/music';
  *
  * All tracks are by Kevin MacLeod (incompetech.com), licensed under Creative
  * Commons Attribution 4.0 (CC BY 4.0). The license requires crediting each
- * track; the Music tab shows the credits (src/components/music-credits.tsx).
+ * track; the Music credits page shows them (src/app/music-credits.tsx).
  * Files were re-encoded to 128 kbps to keep the app small.
  *
  * To add a song, put the mp3 in assets/music/ and add an entry here with its
