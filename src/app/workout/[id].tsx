@@ -23,7 +23,7 @@ import {
 } from '@/lib/run-session';
 import { addRunRecord, completePlanWorkout, getCustomWorkout } from '@/lib/storage';
 import type { Workout } from '@/lib/types';
-import { useSegmentVibration } from '@/lib/vibration';
+import { useSegmentVibration, useSpeedUpVibration } from '@/lib/vibration';
 import { useVoiceCues } from '@/lib/voice-cues';
 import { getBuiltInWorkout, PLANS } from '@/lib/workouts';
 import { formatDuration } from '@/utils/formatting';
@@ -165,6 +165,7 @@ function RunView({
   // is actually going, so a paused screen stays quiet.
   useVoiceCues(feedback, (profile?.voiceCues ?? true) && state.status === 'running', profile?.voice ?? 'standard');
   useSegmentVibration(state, segment.targetCadence, profile?.vibration ?? true);
+  useSpeedUpVibration(feedback, (profile?.vibration ?? true) && state.status === 'running');
 
   const startedAt = useRef<Date | null>(null);
   const finished = state.status === 'finished';

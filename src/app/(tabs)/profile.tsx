@@ -360,12 +360,12 @@ function ProfileForm({
             trackColor={{ true: colors.gold, false: colors.radio }}
             thumbColor={colors.bannerText}
             accessibilityLabel="Vibration"
-            accessibilityHint="Vibrates when the workout changes segment and when it's done"
+            accessibilityHint="Vibrates when the workout changes segment, when it's done, and when you need to speed up"
           />
         </View>
         <ThemedText type="small" style={{ color: colors.cardSubtext }}>
-          Buzzes twice when a harder segment starts, once when it eases off, and three times when the workout is done,
-          so you can feel the changes without looking.
+          Buzzes twice when a harder segment starts, once when it eases off, and three times when the workout is done.
+          A quick rattle of taps means speed up. You can feel it all without looking.
         </ThemedText>
       </View>
     </ScrollView>

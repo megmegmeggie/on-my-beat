@@ -2,14 +2,15 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useRef } from 'react';
 import { Platform, Vibration } from 'react-native';
 
-import type { RunSessionState } from '@/lib/run-session';
+import type { CadenceFeedback, RunSessionState } from '@/lib/run-session';
 
 /**
  * - `harder`: the new segment has a higher target cadence (e.g. a fast interval starts) — two buzzes.
  * - `easier`: the target drops or stays the same (recovery, cool-down) — one long buzz.
  * - `finished`: the whole workout is done — three buzzes.
+ * - `speed-up`: cadence is below target — a quick rattle of short taps, like a nudge.
  */
-export type Buzz = 'harder' | 'easier' | 'finished';
+export type Buzz = 'harder' | 'easier' | 'finished' | 'speed-up';
 
 type HapticStep = { at: number; impact?: Haptics.ImpactFeedbackStyle; notify?: Haptics.NotificationFeedbackType };
 const heavy = (at: number): HapticStep => ({ at, impact: Haptics.ImpactFeedbackStyle.Heavy });
@@ -21,6 +22,7 @@ const IOS_HAPTICS: Record<Buzz, HapticStep[]> = {
   harder: [heavy(0), heavy(160)],
   easier: [heavy(0), { at: 120, notify: Haptics.NotificationFeedbackType.Success }],
   finished: [heavy(0), heavy(200), heavy(400), { at: 650, notify: Haptics.NotificationFeedbackType.Success }],
+  'speed-up': [0, 90, 180, 270].map((at) => ({ at, impact: Haptics.ImpactFeedbackStyle.Rigid })),
 };
 
 // Android patterns alternate wait and buzz lengths in ms.
@@ -28,6 +30,7 @@ const ANDROID_PATTERNS: Record<Buzz, number | number[]> = {
   harder: [0, 250, 150, 250],
   easier: 700,
   finished: [0, 250, 150, 250, 150, 250],
+  'speed-up': [0, 70, 50, 70, 50, 70, 50, 70],
 };
 
 function playHaptics(steps: HapticStep[]) {
@@ -72,4 +75,35 @@ export function useSegmentVibration(state: RunSessionState, targetCadence: numbe
       buzz('finished');
     }
   }, [enabled, state.status, state.completed]);
+}
+
+/** Matches how often the voice cues speak, so a "Faster" cue and its buzz land together. */
+const SPEED_UP_CHECK_MS = 30_000;
+
+/**
+ * While `enabled`, nudges the runner with the `speed-up` buzz whenever they're
+ * below target: straight away, then every 30 seconds (checked on a timer rather
+ * than on every change, because readings wobble around the target band).
+ */
+export function useSpeedUpVibration(feedback: CadenceFeedback, enabled: boolean) {
+  // The timer runs between renders, so it reads the latest feedback from a ref.
+  const latest = useRef(feedback);
+
+  useEffect(() => {
+    latest.current = feedback;
+  }, [feedback]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    function check() {
+      if (latest.current === 'speed-up') {
+        buzz('speed-up');
+      }
+    }
+    check();
+    const timer = setInterval(check, SPEED_UP_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [enabled]);
 }
