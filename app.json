@@ -43,7 +43,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow On My Beat to use your location to track distance and pace during runs."
+          "locationWhenInUsePermission": "Allow On My Beat to use your location to track distance and pace during runs.",
+          "locationAlwaysAndWhenInUsePermission": "Allow On My Beat to keep tracking your distance and pace when your phone is locked during a run. Location is only used while a run is in progress.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
       "expo-asset",

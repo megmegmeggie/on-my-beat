@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 import type { RoutePoint } from '@/lib/types';
 
@@ -17,6 +20,75 @@ const ROUTE_POINT_SPACING_METERS = 10;
 const ROUTE_DECIMALS = 5;
 /** Maximum realistic pace in seconds per mile (20:00/mi). Slower than this is treated as not moving. */
 const MAX_PACE_SEC_PER_MILE = 1200;
+
+/**
+ * How location is requested. `High` is about 10 m; lower settings (e.g. `Balanced`,
+ * 100 m on iOS) mostly give readings that `MAX_ACCURACY_METERS` throws away.
+ */
+const LOCATION_OPTIONS: Location.LocationOptions = {
+  accuracy: Location.Accuracy.High,
+  distanceInterval: MIN_DISTANCE_METERS,
+  timeInterval: MIN_TIME_INTERVAL_MS,
+};
+
+/** The task that receives locations while the screen is locked. */
+const BACKGROUND_TASK = 'run-location-updates';
+
+/**
+ * Background location needs a development or store build: Expo Go can't do it,
+ * and there's no such thing on web. Elsewhere tracking falls back to
+ * foreground-only updates, which pause while the phone is locked.
+ */
+const canTrackInBackground =
+  Platform.OS !== 'web' && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+
+/** Where background locations go: the run being tracked, or nowhere. */
+let backgroundListener: ((location: Location.LocationObject) => void) | null = null;
+
+if (canTrackInBackground) {
+  // Defined at the top level, so it exists whenever the system delivers locations.
+  TaskManager.defineTask<{ locations: Location.LocationObject[] }>(BACKGROUND_TASK, async ({ data, error }) => {
+    if (error || !data) {
+      return;
+    }
+    data.locations.forEach((location) => backgroundListener?.(location));
+  });
+  // A run that ended in a crash can leave updates running with nothing listening; stop them.
+  Location.hasStartedLocationUpdatesAsync(BACKGROUND_TASK)
+    .then((started) => (started && !backgroundListener ? Location.stopLocationUpdatesAsync(BACKGROUND_TASK) : undefined))
+    .catch(() => {});
+}
+
+/**
+ * Sends locations to `onLocation`, in the background too when the build allows
+ * it and the runner granted "Always" location access. Returns a function that stops them.
+ */
+async function startLocationUpdates(onLocation: (location: Location.LocationObject) => void) {
+  if (canTrackInBackground && (await Location.requestBackgroundPermissionsAsync()).status === 'granted') {
+    backgroundListener = onLocation;
+    await Location.startLocationUpdatesAsync(BACKGROUND_TASK, {
+      ...LOCATION_OPTIONS,
+      activityType: Location.ActivityType.Fitness,
+      pausesUpdatesAutomatically: false,
+      // The blue status-bar pill, so it's clear the run is using location.
+      showsBackgroundLocationIndicator: true,
+      // Android shows this notification while the run tracks location.
+      foregroundService: {
+        notificationTitle: 'Run in progress',
+        notificationBody: 'Tracking your distance and pace',
+        notificationColor: '#1F6B3A',
+      },
+    });
+    return () => {
+      if (backgroundListener === onLocation) {
+        backgroundListener = null;
+      }
+      Location.stopLocationUpdatesAsync(BACKGROUND_TASK).catch(() => {});
+    };
+  }
+  const subscription = await Location.watchPositionAsync(LOCATION_OPTIONS, onLocation);
+  return () => subscription.remove();
+}
 
 export type GpsStatus = 'idle' | 'requesting' | 'tracking' | 'denied' | 'unavailable';
 
@@ -84,7 +156,7 @@ export function formatPace(secondsPerMile: number | null): string {
  */
 export function useGpsTracking(active: boolean) {
   const [state, setState] = useState<GpsState>(INITIAL_GPS_STATE);
-  const subscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const stopUpdatesRef = useRef<(() => void) | null>(null);
   const lastLocationRef = useRef<Location.LocationObject | null>(null);
   const totalDistanceMetersRef = useRef(0);
   const startTimeRef = useRef<number | null>(null);
@@ -128,114 +200,115 @@ export function useGpsTracking(active: boolean) {
 
       setState((prev) => ({ ...prev, status: 'tracking' }));
 
-      subscriptionRef.current = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          distanceInterval: MIN_DISTANCE_METERS,
-          timeInterval: MIN_TIME_INTERVAL_MS,
-        },
-        (location) => {
-          if (cancelled) return;
+      const onLocation = (location: Location.LocationObject) => {
+        if (cancelled) return;
 
-          const { coords, timestamp } = location;
-          const { latitude, longitude, speed, accuracy } = coords;
+        const { coords, timestamp } = location;
+        const { latitude, longitude, speed, accuracy } = coords;
 
-          // Discard inaccurate readings.
-          if (accuracy !== null && accuracy > MAX_ACCURACY_METERS) {
-            return;
+        // Discard inaccurate readings.
+        if (accuracy !== null && accuracy > MAX_ACCURACY_METERS) {
+          return;
+        }
+
+        const last = lastLocationRef.current;
+        let segmentDistanceMeters = 0;
+
+        if (last) {
+          const dist = haversineDistanceMeters(
+            last.coords.latitude,
+            last.coords.longitude,
+            latitude,
+            longitude
+          );
+          // Filter out GPS jitter — ignore tiny movements.
+          if (dist >= MIN_DISTANCE_METERS) {
+            segmentDistanceMeters = dist;
+            totalDistanceMetersRef.current += dist;
           }
+        } else {
+          // First reading — start the clock.
+          startTimeRef.current = timestamp;
+        }
 
-          const last = lastLocationRef.current;
-          let segmentDistanceMeters = 0;
+        const now = timestamp;
+        const lastTime = lastUpdateTimeRef.current;
+        let currentPace: number | null = null;
 
-          if (last) {
-            const dist = haversineDistanceMeters(
-              last.coords.latitude,
-              last.coords.longitude,
-              latitude,
-              longitude
-            );
-            // Filter out GPS jitter — ignore tiny movements.
-            if (dist >= MIN_DISTANCE_METERS) {
-              segmentDistanceMeters = dist;
-              totalDistanceMetersRef.current += dist;
-            }
-          } else {
-            // First reading — start the clock.
-            startTimeRef.current = timestamp;
-          }
-
-          const now = timestamp;
-          const lastTime = lastUpdateTimeRef.current;
-          let currentPace: number | null = null;
-
-          if (lastTime !== null && segmentDistanceMeters > 0) {
-            const elapsedSec = (now - lastTime) / 1000;
-            if (elapsedSec > 0) {
-              const pace = elapsedSec / (segmentDistanceMeters / METERS_PER_MILE);
-              if (pace <= MAX_PACE_SEC_PER_MILE) {
-                currentPace = pace;
-              }
-            }
-          }
-
-          // Use device speed if available and reasonable.
-          if (speed !== null && speed > 0.5) {
-            const pace = 1 / (speed / METERS_PER_MILE);
+        if (lastTime !== null && segmentDistanceMeters > 0) {
+          const elapsedSec = (now - lastTime) / 1000;
+          if (elapsedSec > 0) {
+            const pace = elapsedSec / (segmentDistanceMeters / METERS_PER_MILE);
             if (pace <= MAX_PACE_SEC_PER_MILE) {
               currentPace = pace;
             }
           }
+        }
 
-          const route = routeRef.current;
-          const lastPoint = route.at(-1);
-          if (
-            !lastPoint ||
-            haversineDistanceMeters(lastPoint[0], lastPoint[1], latitude, longitude) >= ROUTE_POINT_SPACING_METERS
-          ) {
-            route.push([roundCoordinate(latitude), roundCoordinate(longitude)]);
+        // Use device speed if available and reasonable.
+        if (speed !== null && speed > 0.5) {
+          const pace = 1 / (speed / METERS_PER_MILE);
+          if (pace <= MAX_PACE_SEC_PER_MILE) {
+            currentPace = pace;
           }
+        }
 
-          lastLocationRef.current = location;
-          lastUpdateTimeRef.current = now;
+        const route = routeRef.current;
+        const lastPoint = route.at(-1);
+        if (
+          !lastPoint ||
+          haversineDistanceMeters(lastPoint[0], lastPoint[1], latitude, longitude) >= ROUTE_POINT_SPACING_METERS
+        ) {
+          route.push([roundCoordinate(latitude), roundCoordinate(longitude)]);
+        }
 
-          const totalDistanceMiles = totalDistanceMetersRef.current / METERS_PER_MILE;
-          let averagePace: number | null = null;
-          if (startTimeRef.current !== null && totalDistanceMetersRef.current > 0) {
-            const totalElapsedSec = (now - startTimeRef.current) / 1000;
-            if (totalElapsedSec > 0) {
-              const pace = totalElapsedSec / totalDistanceMiles;
-              if (pace <= MAX_PACE_SEC_PER_MILE) {
-                averagePace = pace;
-              }
+        lastLocationRef.current = location;
+        lastUpdateTimeRef.current = now;
+
+        const totalDistanceMiles = totalDistanceMetersRef.current / METERS_PER_MILE;
+        let averagePace: number | null = null;
+        if (startTimeRef.current !== null && totalDistanceMetersRef.current > 0) {
+          const totalElapsedSec = (now - startTimeRef.current) / 1000;
+          if (totalElapsedSec > 0) {
+            const pace = totalElapsedSec / totalDistanceMiles;
+            if (pace <= MAX_PACE_SEC_PER_MILE) {
+              averagePace = pace;
             }
           }
-
-          setState((prev) => ({
-            ...prev,
-            status: 'tracking',
-            distanceMiles: totalDistanceMiles,
-            currentPaceSecPerMile: currentPace,
-            averagePaceSecPerMile: averagePace,
-            speedMps: speed,
-            updateCount: prev.updateCount + 1,
-          }));
         }
-      );
+
+        setState((prev) => ({
+          ...prev,
+          status: 'tracking',
+          distanceMiles: totalDistanceMiles,
+          currentPaceSecPerMile: currentPace,
+          averagePaceSecPerMile: averagePace,
+          speedMps: speed,
+          updateCount: prev.updateCount + 1,
+        }));
+      };
+
+      const stopUpdates = await startLocationUpdates(onLocation);
+      if (cancelled) {
+        // The run paused or ended while updates were starting.
+        stopUpdates();
+      } else {
+        stopUpdatesRef.current = stopUpdates;
+      }
     }
 
     void startTracking();
 
     return () => {
       cancelled = true;
-      subscriptionRef.current?.remove();
-      subscriptionRef.current = null;
+      stopUpdatesRef.current?.();
+      stopUpdatesRef.current = null;
     };
   }, [active]);
 
   function stop() {
-    subscriptionRef.current?.remove();
-    subscriptionRef.current = null;
+    stopUpdatesRef.current?.();
+    stopUpdatesRef.current = null;
   }
 
   function reset() {
