@@ -46,7 +46,7 @@ export default function SummaryScreen() {
             <>
               <View style={styles.header}>
                 <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
-                  {record.completed ? 'Nice run!' : 'Run ended'}
+                  Nice run!
                 </ThemedText>
                 <ThemedText style={{ color: colors.cardSubtext }}>
                   {record.workoutName} · {formatDate(record.startedAt)}
