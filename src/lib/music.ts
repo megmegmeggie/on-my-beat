@@ -63,10 +63,20 @@ const DUCKED_VOLUME = 0.3;
 
 let player: AudioPlayer | null = null;
 let playing: Track | null = null;
+let finishHandler: (() => void) | null = null;
 
-/** Starts `track` looping, replacing whatever was playing. Placeholders just stop the music. */
-export function playTrack(track: Track) {
+type PlayOptions = {
+  /** Repeat the track instead of stopping at its end. */
+  loop: boolean;
+  /** Called when the track plays to its end (never while looping). */
+  onFinish?: () => void;
+};
+
+/** Starts `track`, replacing whatever was playing. Placeholders just stop the music. */
+export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
+  finishHandler = onFinish ?? null;
   if (track === playing && player) {
+    player.loop = loop;
     player.play();
     return;
   }
@@ -81,8 +91,13 @@ export function playTrack(track: Track) {
     // Runners often have the ringer off, so play even in silent mode.
     void setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'duckOthers' });
     player = createAudioPlayer(track.file);
+    player.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish && !status.loop) {
+        finishHandler?.();
+      }
+    });
   }
-  player.loop = true;
+  player.loop = loop;
   player.play();
   runMusicListeners.forEach((listener) => listener());
 }
@@ -106,33 +121,73 @@ export function stopMusic() {
   player?.remove();
   player = null;
   playing = null;
+  finishHandler = null;
+}
+
+/** Songs within this many BPM of the target (after half-time doubling) count as a match. */
+const BPM_TOLERANCE = 3;
+
+/**
+ * The play order for one segment: the matches, then every other track by
+ * closeness (reachable with "Next song"). `matches` is how many of the first
+ * picks rotate when a song ends; with no track in tolerance the best one loops.
+ */
+type Queue = { targetCadence: number; picks: TrackPick[]; matches: number; index: number };
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/** A fresh queue for `targetCadence`, with the matches shuffled so each run sounds different. */
+function buildQueue(targetCadence: number, tracks: Track[] = TRACKS): Queue {
+  const ranked = rankTracks(targetCadence, tracks);
+  const inTolerance = ranked.filter((pick) => Math.abs(pick.matchedBpm - targetCadence) <= BPM_TOLERANCE).length;
+  // `ranked` is sorted by closeness, so the matches are its first `inTolerance` picks.
+  const picks = [...shuffle(ranked.slice(0, inTolerance)), ...ranked.slice(inTolerance)];
+  return { targetCadence, picks, matches: Math.min(Math.max(inTolerance, 1), picks.length), index: 0 };
 }
 
 /**
- * Plays the best track for `targetCadence` while `active`, switching when the
- * target changes (i.e. when the workout segment changes). `nextSong` moves to
- * the next-best match until the target changes. Stops on unmount.
+ * Plays music for `targetCadence` while `active`: a shuffled rotation of the
+ * songs within `BPM_TOLERANCE` of it, moving to the next one when a song ends.
+ * A new target (i.e. a new workout segment) starts a new shuffle. `nextSong`
+ * steps through the matches, then the other songs by closeness. Stops on unmount.
  */
 export function useSegmentMusic(targetCadence: number, active: boolean) {
-  // Skips only apply to the target they were made for; a new segment starts from the best match.
-  const [skips, setSkips] = useState({ targetCadence, count: 0 });
-  const skipCount = skips.targetCadence === targetCadence ? skips.count : 0;
-  const ranked = rankTracks(targetCadence);
-  const pick = ranked.length > 0 ? ranked[skipCount % ranked.length] : null;
+  const [queue, setQueue] = useState(() => buildQueue(targetCadence));
+  if (queue.targetCadence !== targetCadence) {
+    setQueue(buildQueue(targetCadence));
+  }
+  const pick = queue.picks[queue.index] ?? null;
   const track = pick?.track;
+  const loop = queue.matches === 1 && queue.index === 0;
 
   useEffect(() => {
-    if (active && track) {
-      playTrack(track);
-    } else {
+    if (!active || !track) {
       pauseMusic();
+      return;
     }
-  }, [active, track]);
+    playTrack(track, {
+      loop,
+      // A finished song hands over to the next match; after a skip past the matches, back to them.
+      onFinish: () =>
+        setQueue((current) =>
+          current.targetCadence === targetCadence
+            ? { ...current, index: current.index + 1 < current.matches ? current.index + 1 : 0 }
+            : current
+        ),
+    });
+  }, [active, track, loop, targetCadence]);
 
   useEffect(() => stopMusic, []);
 
   return {
     pick,
-    nextSong: () => setSkips({ targetCadence, count: skipCount + 1 }),
+    nextSong: () => setQueue((current) => ({ ...current, index: (current.index + 1) % current.picks.length })),
   };
 }
