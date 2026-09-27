@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useEffect, useRef } from 'react';
 import { Platform, Vibration } from 'react-native';
 
@@ -10,18 +11,39 @@ import type { RunSessionState } from '@/lib/run-session';
  */
 export type Buzz = 'harder' | 'easier' | 'finished';
 
-// iOS buzzes are a fixed ~0.4 s and can't be lengthened; an iOS pattern lists the
-// pause before each buzz. Android patterns alternate wait and buzz lengths in ms.
-const PATTERNS: Record<Buzz, { ios: number | number[]; android: number | number[] }> = {
-  harder: { ios: [0, 500], android: [0, 250, 150, 250] },
-  easier: { ios: 400, android: 700 },
-  finished: { ios: [0, 500, 500], android: [0, 250, 150, 250, 150, 250] },
+type HapticStep = { at: number; impact?: Haptics.ImpactFeedbackStyle; notify?: Haptics.NotificationFeedbackType };
+const heavy = (at: number): HapticStep => ({ at, impact: Haptics.ImpactFeedbackStyle.Heavy });
+
+// iOS: React Native's Vibration uses the system-sound vibrate, which iOS often
+// suppresses (e.g. while the app is playing audio), so iPhones use the Taptic
+// Engine instead. Each step is one tap at `at` ms; heavy taps are the strongest.
+const IOS_HAPTICS: Record<Buzz, HapticStep[]> = {
+  harder: [heavy(0), heavy(160)],
+  easier: [heavy(0), { at: 120, notify: Haptics.NotificationFeedbackType.Success }],
+  finished: [heavy(0), heavy(200), heavy(400), { at: 650, notify: Haptics.NotificationFeedbackType.Success }],
 };
 
+// Android patterns alternate wait and buzz lengths in ms.
+const ANDROID_PATTERNS: Record<Buzz, number | number[]> = {
+  harder: [0, 250, 150, 250],
+  easier: 700,
+  finished: [0, 250, 150, 250, 150, 250],
+};
+
+function playHaptics(steps: HapticStep[]) {
+  for (const step of steps) {
+    setTimeout(() => {
+      const done = step.notify ? Haptics.notificationAsync(step.notify) : Haptics.impactAsync(step.impact);
+      // Haptics fail quietly when the Taptic Engine is off (Low Power Mode, settings); nothing to do.
+      done.catch(() => {});
+    }, step.at);
+  }
+}
+
 export function buzz(kind: Buzz) {
-  const { ios, android } = PATTERNS[kind];
+  const android = ANDROID_PATTERNS[kind];
   if (Platform.OS === 'ios') {
-    Vibration.vibrate(ios);
+    playHaptics(IOS_HAPTICS[kind]);
   } else if (Platform.OS === 'android') {
     Vibration.vibrate(android);
   } else {
