@@ -169,8 +169,3 @@ src/
 - **No real-time Spotify data** — Demo uses a hardcoded placeholder catalog; full API integration requires Spotify Premium and proper scope approval
 - **Simulator support** — Accelerometer not available on iOS Simulator; use the simulated cadence toggle (long-press workout name)
 
----
-
-## License
-
-[MIT](LICENSE)
