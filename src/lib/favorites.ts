@@ -60,5 +60,7 @@ export function useFavoriteSongs() {
   useEffect(() => {
     void load();
   }, []);
-  return useSyncExternalStore(subscribe, () => favorites);
+  // The same snapshot for server rendering: the web build pre-renders pages, where it's just empty.
+  const snapshot = () => favorites;
+  return useSyncExternalStore(subscribe, snapshot, snapshot);
 }

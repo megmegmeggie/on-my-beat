@@ -5,9 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { BrandColors, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { onRunMusicStart } from '@/lib/music';
 import type { AudioSource } from '@/types/music';
 import { formatDuration } from '@/utils/formatting';
@@ -51,7 +50,7 @@ export function AudioPlayer({
   autoPlay = false,
   onTrackEnded,
 }: AudioPlayerProps) {
-  const theme = useTheme();
+  const colors = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   const player = useAudioPlayer(source, { updateInterval: STATUS_UPDATE_INTERVAL });
   const status = useAudioPlayerStatus(player);
 
@@ -149,21 +148,24 @@ export function AudioPlayer({
   }, [isMuted, player]);
 
   return (
-    <ThemedView type="backgroundElement" style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.banner }]}>
       <View style={styles.header}>
         <View style={styles.metadata}>
-          <ThemedText type="subtitle" numberOfLines={1}>
+          <ThemedText type="smallBold" style={[styles.label, { color: colors.bannerLabel }]}>
+            {status.playing ? 'Now playing' : 'Ready to play'}
+          </ThemedText>
+          <ThemedText type="subtitle" numberOfLines={1} style={{ color: colors.bannerText }}>
             {title ?? 'Audio'}
           </ThemedText>
 
           {artist ? (
-            <ThemedText themeColor="textSecondary" numberOfLines={1}>
+            <ThemedText numberOfLines={1} style={{ color: colors.bannerText }}>
               {albumTitle ? `${artist} — ${albumTitle}` : artist}
             </ThemedText>
           ) : null}
         </View>
 
-        {status.isBuffering && !isScrubbing ? <ActivityIndicator size="small" /> : null}
+        {status.isBuffering && !isScrubbing ? <ActivityIndicator size="small" color={colors.bannerText} /> : null}
       </View>
 
       <Slider
@@ -181,24 +183,20 @@ export function AudioPlayer({
           setIsScrubbing(false);
           void player.seekTo(value);
         }}
-        minimumTrackTintColor={theme.text}
-        maximumTrackTintColor={theme.textSecondary}
-        thumbTintColor={theme.text}
+        minimumTrackTintColor={colors.bannerLabel}
+        maximumTrackTintColor="rgba(255, 255, 255, 0.35)"
+        thumbTintColor={colors.bannerLabel}
         accessibilityLabel="Playback position"
       />
 
       <View style={styles.timeRow}>
-        <ThemedText themeColor="textSecondary" style={styles.time}>
-          {formatDuration(position)}
-        </ThemedText>
+        <ThemedText style={[styles.time, { color: colors.bannerText }]}>{formatDuration(position)}</ThemedText>
 
-        <ThemedText themeColor="textSecondary" style={styles.time}>
-          {formatDuration(duration)}
-        </ThemedText>
+        <ThemedText style={[styles.time, { color: colors.bannerText }]}>{formatDuration(duration)}</ThemedText>
       </View>
 
       {status.error ? (
-        <ThemedText themeColor="textSecondary" style={styles.error}>
+        <ThemedText style={[styles.error, { color: colors.bannerText }]}>
           {status.error}
         </ThemedText>
       ) : null}
@@ -210,7 +208,7 @@ export function AudioPlayer({
           accessibilityLabel={`Rewind ${SKIP_SECONDS} seconds`}
           iosName="gobackward.10"
           androidName="replay_10"
-          tintColor={theme.text}
+          tintColor={colors.bannerText}
         />
 
         <Pressable
@@ -221,7 +219,7 @@ export function AudioPlayer({
           onPress={togglePlayback}
           style={({ pressed }) => [
             styles.playButton,
-            { backgroundColor: theme.text },
+            { backgroundColor: colors.bannerLabel },
             pressed && styles.pressed,
           ]}>
           <SymbolView
@@ -231,7 +229,7 @@ export function AudioPlayer({
               web: status.playing ? 'pause' : 'play_arrow',
             }}
             size={28}
-            tintColor={theme.background}
+            tintColor={colors.banner}
           />
         </Pressable>
 
@@ -241,26 +239,28 @@ export function AudioPlayer({
           accessibilityLabel={`Forward ${SKIP_SECONDS} seconds`}
           iosName="goforward.10"
           androidName="forward_10"
-          tintColor={theme.text}
+          tintColor={colors.bannerText}
         />
       </View>
 
       <View style={styles.secondaryControls}>
-        <SecondaryButton onPress={restart} accessibilityLabel="Restart track" label="Restart" />
+        <SecondaryButton onPress={restart} accessibilityLabel="Restart track" label="Restart" color={colors.bannerLabel} />
 
         <SecondaryButton
           onPress={cyclePlaybackRate}
           accessibilityLabel="Change playback speed"
           label={`${status.playbackRate}×`}
+          color={colors.bannerLabel}
         />
 
         <SecondaryButton
           onPress={toggleMute}
           accessibilityLabel={isMuted ? 'Unmute' : 'Mute'}
           label={isMuted ? 'Unmute' : 'Mute'}
+          color={colors.bannerLabel}
         />
       </View>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -303,16 +303,19 @@ type SecondaryButtonProps = {
   onPress: () => void;
   accessibilityLabel: string;
   label: string;
+  color: string;
 };
 
-function SecondaryButton({ onPress, accessibilityLabel, label }: SecondaryButtonProps) {
+function SecondaryButton({ onPress, accessibilityLabel, label, color }: SecondaryButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-      <ThemedText themeColor="textSecondary">{label}</ThemedText>
+      <ThemedText type="smallBold" style={{ color }}>
+        {label}
+      </ThemedText>
     </Pressable>
   );
 }
@@ -320,8 +323,8 @@ function SecondaryButton({ onPress, accessibilityLabel, label }: SecondaryButton
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.two,
-    padding: Spacing.four,
-    borderRadius: Spacing.four,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
   },
   header: {
     flexDirection: 'row',
@@ -332,6 +335,10 @@ const styles = StyleSheet.create({
   metadata: {
     flex: 1,
     gap: Spacing.one,
+  },
+  label: {
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   slider: {
     width: '100%',

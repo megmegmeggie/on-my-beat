@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AudioPlayer } from '@/components/audio-player';
 import { FavoriteButton } from '@/components/favorite-button';
@@ -10,13 +10,10 @@ import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useTheme } from '@/hooks/use-theme';
 import { getSongs } from '@/services/music/musicService';
 
 export default function MusicScreen() {
-  const theme = useTheme();
-  const brand = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
-  const safeAreaInsets = useSafeAreaInsets();
+  const colors = BrandColors[useColorScheme() === 'dark' ? 'dark' : 'light'];
   const tracks = getSongs();
 
   // `autoPlay` is false on first load so the app never starts making noise
@@ -38,138 +35,156 @@ export default function MusicScreen() {
     setSelection({ id: nextSong.id, autoPlay: true });
   };
 
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
-
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Music</ThemedText>
-          <ThemedText themeColor="textSecondary">
-            Browse the song library. During a run, songs are picked automatically to match your target cadence, and
-            your favourites play first.
-          </ThemedText>
-        </ThemedView>
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
+              Music
+            </ThemedText>
+            <ThemedText style={{ color: colors.cardSubtext }}>
+              During a run, songs are picked to match your target cadence. Your favourites play first.
+            </ThemedText>
+          </View>
 
-        {selectedSong ? (
-          <AudioPlayer
-            key={selectedSong.id}
-            source={selectedSong.source}
-            title={selectedSong.title}
-            artist={selectedSong.artist}
-            albumTitle={selectedSong.albumTitle}
-            artworkUrl={selectedSong.artworkUrl}
-            backgroundPlayback
-            autoPlay={selection.autoPlay}
-            onTrackEnded={playNext}
-          />
-        ) : null}
+          {selectedSong ? (
+            <AudioPlayer
+              key={selectedSong.id}
+              source={selectedSong.source}
+              title={selectedSong.title}
+              artist={selectedSong.artist}
+              albumTitle={selectedSong.albumTitle}
+              artworkUrl={selectedSong.artworkUrl}
+              backgroundPlayback
+              autoPlay={selection.autoPlay}
+              onTrackEnded={playNext}
+            />
+          ) : null}
 
-        <ThemedView type="backgroundElement" style={styles.trackList}>
-          {tracks.map((song) => {
-            const isSelected = song.id === selectedSong?.id;
+          <View style={styles.libraryHeader}>
+            <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
+              Song library
+            </ThemedText>
+            <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+              {tracks.length} songs
+            </ThemedText>
+          </View>
 
-            return (
-              <Pressable
-                key={song.id}
-                onPress={() => setSelection({ id: song.id, autoPlay: true })}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isSelected }}
-                accessibilityLabel={`${song.title} by ${song.artist}`}
-                style={({ pressed }) => [
-                  styles.trackRow,
-                  isSelected && { backgroundColor: theme.backgroundSelected },
-                  pressed && styles.pressed,
-                ]}>
-                <View style={styles.trackInfo}>
-                  <ThemedText type="smallBold" numberOfLines={1}>
-                    {song.title}
-                  </ThemedText>
-                  <ThemedText themeColor="textSecondary" numberOfLines={1}>
-                    {song.artist} · {song.bpm} BPM
-                  </ThemedText>
-                </View>
+          <View style={styles.list}>
+            {tracks.map((song) => {
+              const isSelected = song.id === selectedSong?.id;
 
-                {isSelected ? (
-                  <ThemedText themeColor="textSecondary" style={styles.nowPlaying}>
-                    Playing
-                  </ThemedText>
-                ) : null}
-                <FavoriteButton
-                  songId={song.id}
-                  title={song.title}
-                  color={theme.textSecondary}
-                  activeColor={brand.gold}
-                />
-              </Pressable>
-            );
-          })}
-        </ThemedView>
+              return (
+                <Pressable
+                  key={song.id}
+                  onPress={() => setSelection({ id: song.id, autoPlay: true })}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={`${song.title} by ${song.artist}, ${song.bpm} BPM`}
+                  style={({ pressed }) => [
+                    styles.card,
+                    {
+                      backgroundColor: isSelected ? colors.cardSelected : colors.card,
+                      borderColor: isSelected ? colors.gold : 'transparent',
+                    },
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={styles.trackInfo}>
+                    <ThemedText type="smallBold" numberOfLines={1} style={{ color: colors.cardText }}>
+                      {song.title}
+                    </ThemedText>
+                    <ThemedText type="small" numberOfLines={1} style={{ color: colors.cardSubtext }}>
+                      {isSelected ? 'Selected · ' : ''}
+                      {song.genre ?? song.artist}
+                    </ThemedText>
+                  </View>
 
-        <MusicCredits />
+                  <View style={styles.bpm}>
+                    <ThemedText type="smallBold" style={[styles.bpmValue, { color: colors.cardText }]}>
+                      {song.bpm}
+                    </ThemedText>
+                    <ThemedText type="small" style={[styles.bpmUnit, { color: colors.goldText }]}>
+                      BPM
+                    </ThemedText>
+                  </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
+                  <FavoriteButton songId={song.id} title={song.title} color={colors.radio} activeColor={colors.gold} />
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <MusicCredits />
+
+          {Platform.OS === 'web' && <WebBadge />}
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
   container: {
+    flex: 1,
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  safeArea: {
+    flex: 1,
     maxWidth: MaxContentWidth,
-    flexGrow: 1,
-    // Shrink to the screen width so long lines wrap instead of running off the side.
-    flexShrink: 1,
-    gap: Spacing.five,
+  },
+  content: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.six,
-  },
-  titleContainer: {
+    paddingBottom: BottomTabInset + Spacing.three,
     gap: Spacing.three,
   },
-  trackList: {
-    overflow: 'hidden',
-    borderRadius: Spacing.four,
+  header: {
+    gap: Spacing.two,
   },
-  trackRow: {
+  title: {
+    fontSize: 48,
+    lineHeight: 56,
+    fontWeight: 700,
+  },
+  libraryHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: Spacing.two,
+  },
+  sectionLabel: {
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  list: {
+    gap: Spacing.two,
+  },
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: 2,
   },
   trackInfo: {
     flex: 1,
-    gap: Spacing.one,
+    gap: Spacing.half,
   },
-  nowPlaying: {
-    fontSize: 12,
+  bpm: {
+    alignItems: 'center',
+  },
+  bpmValue: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontVariant: ['tabular-nums'],
+  },
+  bpmUnit: {
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1,
   },
   pressed: {
     opacity: 0.7,
