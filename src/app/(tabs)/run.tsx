@@ -82,7 +82,7 @@ export default function RunScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <ThemedText type="title" style={[styles.title, { color: colors.heading }]}>
-            Custom run
+            Custom Run
           </ThemedText>
 
           <View style={styles.modeRow} accessibilityRole="radiogroup">

@@ -33,7 +33,7 @@ const QUICK_RUN_CARDS: { title: string; detail: string; href: Href }[] = [
     detail: `Relaxed pace · ${Math.round(workoutDurationSec(QUICK_RUNS.easy) / 60)} min`,
     href: { pathname: '/workout/[id]', params: { id: QUICK_RUNS.easy.id } },
   },
-  { title: 'Custom', detail: 'Set distance and pace, or a fartlek', href: '/run' },
+  { title: 'Custom Run', detail: 'Set distance and pace, or a fartlek', href: '/run' },
 ];
 
 /** Plan progress text, e.g. "Next: Week 1, Day 2" or "Complete". */
