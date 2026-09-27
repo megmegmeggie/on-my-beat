@@ -5,12 +5,13 @@ import { Platform, Vibration } from 'react-native';
 import type { CadenceFeedback, RunSessionState } from '@/lib/run-session';
 
 /**
+ * - `start`: the workout has started — three taps building in strength, like "ready, set, go".
  * - `harder`: the new segment has a higher target cadence (e.g. a fast interval starts) — two buzzes.
  * - `easier`: the target drops or stays the same (recovery, cool-down) — one long buzz.
  * - `finished`: the whole workout is done — three buzzes.
  * - `speed-up`: cadence is below target — a quick rattle of short taps, like a nudge.
  */
-export type Buzz = 'harder' | 'easier' | 'finished' | 'speed-up';
+export type Buzz = 'start' | 'harder' | 'easier' | 'finished' | 'speed-up';
 
 type HapticStep = { at: number; impact?: Haptics.ImpactFeedbackStyle; notify?: Haptics.NotificationFeedbackType };
 const heavy = (at: number): HapticStep => ({ at, impact: Haptics.ImpactFeedbackStyle.Heavy });
@@ -19,6 +20,11 @@ const heavy = (at: number): HapticStep => ({ at, impact: Haptics.ImpactFeedbackS
 // suppresses (e.g. while the app is playing audio), so iPhones use the Taptic
 // Engine instead. Each step is one tap at `at` ms; heavy taps are the strongest.
 const IOS_HAPTICS: Record<Buzz, HapticStep[]> = {
+  start: [
+    { at: 0, impact: Haptics.ImpactFeedbackStyle.Light },
+    { at: 150, impact: Haptics.ImpactFeedbackStyle.Medium },
+    heavy(300),
+  ],
   harder: [heavy(0), heavy(160)],
   easier: [heavy(0), { at: 120, notify: Haptics.NotificationFeedbackType.Success }],
   finished: [heavy(0), heavy(200), heavy(400), { at: 650, notify: Haptics.NotificationFeedbackType.Success }],
@@ -27,6 +33,7 @@ const IOS_HAPTICS: Record<Buzz, HapticStep[]> = {
 
 // Android patterns alternate wait and buzz lengths in ms.
 const ANDROID_PATTERNS: Record<Buzz, number | number[]> = {
+  start: [0, 100, 100, 100, 100, 400],
   harder: [0, 250, 150, 250],
   easier: 700,
   finished: [0, 250, 150, 250, 150, 250],
@@ -56,11 +63,22 @@ export function buzz(kind: Buzz) {
 }
 
 /**
- * Buzzes when the run moves to a new segment (including skips) and when the
- * workout is completed, so the runner feels the change without looking.
+ * Buzzes when the workout starts, when the run moves to a new segment
+ * (including skips) and when the workout is completed, so the runner feels
+ * the change without looking.
  */
 export function useSegmentVibration(state: RunSessionState, targetCadence: number, enabled: boolean) {
   const previous = useRef({ segmentIndex: state.segmentIndex, targetCadence });
+  const previousStatus = useRef(state.status);
+
+  useEffect(() => {
+    const before = previousStatus.current;
+    previousStatus.current = state.status;
+    // Only the first start: resuming from a pause doesn't buzz.
+    if (enabled && before === 'ready' && state.status === 'running') {
+      buzz('start');
+    }
+  }, [enabled, state.status]);
 
   useEffect(() => {
     const before = previous.current;
