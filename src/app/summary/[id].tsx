@@ -7,6 +7,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BrandColors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useProfile } from '@/hooks/use-profile';
+import { estimateRunCalories } from '@/lib/calories';
 import { formatPace } from '@/lib/gps';
 import { getRunHistory } from '@/lib/storage';
 import type { RunRecord } from '@/lib/types';
@@ -35,7 +37,9 @@ export default function SummaryScreen() {
     };
   }, []);
 
+  const [profile] = useProfile();
   const record = history?.find((run) => run.id === id);
+  const calories = record && profile ? estimateRunCalories(record, profile.weightKg, profile.pace) : null;
   const earlierRuns = history?.filter((run) => run.id !== id).slice(0, RECENT_RUNS) ?? [];
 
   return (
@@ -68,7 +72,21 @@ export default function SummaryScreen() {
                 {record.averagePaceSecPerMile != null && (
                   <StatCard label="Avg pace" value={formatPace(record.averagePaceSecPerMile)} unit="/mi" colors={colors} />
                 )}
+                {calories && <StatCard label="Calories" value={String(calories.kcal)} unit="kcal" colors={colors} />}
               </View>
+              {profile &&
+                (calories ? (
+                  <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+                    Calories are an estimate from your weight and{' '}
+                    {calories.basis === 'gps' ? 'GPS pace' : 'your typical pace in Profile'}.
+                  </ThemedText>
+                ) : (
+                  <Pressable onPress={() => router.push('/profile')} accessibilityRole="link">
+                    <ThemedText type="small" style={{ color: colors.goldText }}>
+                      Add your weight in Profile to see calories burned ›
+                    </ThemedText>
+                  </Pressable>
+                ))}
 
               <View style={[styles.onTarget, { backgroundColor: colors.banner }]}>
                 <View style={styles.onTargetHeader}>
