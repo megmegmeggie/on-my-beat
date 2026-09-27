@@ -228,7 +228,7 @@ function RunView({
           <GpsStat label="Pace" value={formatPace(gps.currentPaceSecPerMile)} unit="/mi" colors={colors} />
           <GpsStat label="Avg pace" value={formatPace(gps.averagePaceSecPerMile)} unit="/mi" colors={colors} />
         </View>
-      )}>
+      )}
 
       {gps.error && (
         <ThemedText type="small" style={{ color: colors.cardSubtext }}>
