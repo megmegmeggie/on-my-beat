@@ -1,5 +1,6 @@
 import { type AudioPlayer, createAudioPlayer, setAudioModeAsync, setIsAudioActiveAsync } from 'expo-audio';
 import { useEffect, useState } from 'react';
+import { AppState, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 
 import { getFavoriteSongIds } from '@/lib/favorites';
 import { TRACKS } from '@/lib/tracks';
@@ -68,6 +69,21 @@ const DUCKED_VOLUME = 0.3;
 let player: AudioPlayer | null = null;
 let playing: Track | null = null;
 let finishHandler: (() => void) | null = null;
+/** Whether the run wants music right now (not paused or stopped), for restarting it after a lock. */
+let shouldBePlaying = false;
+let appStateSubscription: NativeEventSubscription | null = null;
+
+/**
+ * Restarts the run's music when the app comes back to the foreground. Where the
+ * app can't play in the background (Expo Go on iOS), the system stops the music
+ * when the phone locks, and expo-audio won't restart a player that asked for
+ * background playback, so without this the rest of the run would be silent.
+ */
+function resumeWhenActive(state: AppStateStatus) {
+  if (state === 'active' && shouldBePlaying && player && !player.playing) {
+    player.play();
+  }
+}
 
 type PlayOptions = {
   /** Repeat the track instead of stopping at its end. */
@@ -82,11 +98,13 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
   if (track === playing && player) {
     player.loop = loop;
     player.play();
+    shouldBePlaying = true;
     return;
   }
   playing = track;
   if (!track.file) {
     player?.pause();
+    shouldBePlaying = false;
     return;
   }
   // Stop the Music tab's player first, so the run's song doesn't start over it.
@@ -112,9 +130,11 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
         finishHandler?.();
       }
     });
+    appStateSubscription = AppState.addEventListener('change', resumeWhenActive);
   }
   player.loop = loop;
   player.play();
+  shouldBePlaying = true;
   // Shows the song on the lock screen. Android also needs this, or it stops
   // background audio after about three minutes.
   player.setActiveForLockScreen(true, { title: track.title, artist: track.artist });
@@ -122,6 +142,7 @@ export function playTrack(track: Track, { loop, onFinish }: PlayOptions) {
 
 export function pauseMusic() {
   player?.pause();
+  shouldBePlaying = false;
 }
 
 /**
@@ -146,6 +167,9 @@ export function stopMusic() {
   player = null;
   playing = null;
   finishHandler = null;
+  shouldBePlaying = false;
+  appStateSubscription?.remove();
+  appStateSubscription = null;
 }
 
 /** Songs within this many BPM of the target (after half-time doubling) count as a match. */
