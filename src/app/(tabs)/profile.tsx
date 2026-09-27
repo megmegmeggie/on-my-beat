@@ -25,6 +25,7 @@ import {
   type Profile,
   useProfile,
 } from '@/hooks/use-profile';
+import { buzz } from '@/lib/vibration';
 import { previewVoice, VOICE_OPTIONS } from '@/lib/voice-cues';
 
 type Colors = (typeof BrandColors)['light' | 'dark'];
@@ -340,6 +341,32 @@ function ProfileForm({
             ))}
           </View>
         )}
+      </View>
+
+      <View style={styles.field}>
+        <View style={styles.toggleRow}>
+          <ThemedText type="smallBold" style={[styles.sectionLabel, { color: colors.goldText }]}>
+            Vibration
+          </ThemedText>
+          <Switch
+            value={profile.vibration}
+            onValueChange={(vibration) => {
+              updateProfile({ vibration });
+              // Buzz once, so the pattern can be felt before a run.
+              if (vibration) {
+                buzz('harder');
+              }
+            }}
+            trackColor={{ true: colors.gold, false: colors.radio }}
+            thumbColor={colors.bannerText}
+            accessibilityLabel="Vibration"
+            accessibilityHint="Vibrates when the workout changes segment and when it's done"
+          />
+        </View>
+        <ThemedText type="small" style={{ color: colors.cardSubtext }}>
+          Buzzes twice when a harder segment starts, once when it eases off, and three times when the workout is done,
+          so you can feel the changes without looking.
+        </ThemedText>
       </View>
     </ScrollView>
   );

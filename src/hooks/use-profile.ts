@@ -23,6 +23,8 @@ export type Profile = {
   voiceCues: boolean;
   /** Which voice speaks those cues. */
   voice: Voice;
+  /** Vibrate when the workout moves to a new segment and when it's completed. */
+  vibration: boolean;
 };
 
 const STORAGE_KEY = 'profile';
@@ -36,6 +38,7 @@ export const EMPTY_PROFILE: Profile = {
   pace: null,
   voiceCues: true,
   voice: 'current',
+  vibration: true,
 };
 
 function parseProfile(stored: string | null): Profile {
@@ -54,6 +57,8 @@ function parseProfile(stored: string | null): Profile {
       // Absent on profiles saved before cues existed, so default them on.
       voiceCues: typeof data.voiceCues === 'boolean' ? data.voiceCues : true,
       voice: VOICE_IDS.includes(data.voice) ? data.voice : 'current',
+      // Absent on profiles saved before vibration existed, so default it on.
+      vibration: typeof data.vibration === 'boolean' ? data.vibration : true,
     };
   } catch {
     return EMPTY_PROFILE;
